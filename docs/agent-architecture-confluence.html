@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Building an AI Development Team: Architecture &amp; Design Decisions</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f8f9fa;
+    --surface-2: #f1f3f5;
+    --text: #172b4d;
+    --text-muted: #5e6c84;
+    --text-light: #97a0af;
+    --border: #dfe1e6;
+    --border-light: #ebecf0;
+    --accent: #0052cc;
+    --accent-light: #deebff;
+    --accent-dark: #003d99;
+    --green: #00875a;
+    --green-light: #e3fcef;
+    --green-border: #abf5d1;
+    --red: #de350b;
+    --red-light: #ffebe6;
+    --orange: #ff991f;
+    --orange-light: #fff7e6;
+    --purple: #6554c0;
+    --purple-light: #eae6ff;
+    --cyan: #00b8d9;
+    --cyan-light: #e6fcff;
+    --pink: #e774bb;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.714;
+    font-size: 14px;
+  }
+
+  /* ── Confluence-style layout ── */
+  .page-container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+  }
+
+  /* ── TOC sidebar (fixed) ── */
+  .toc-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 260px;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    font-size: 12px;
+    z-index: 50;
+  }
+  .toc-sidebar h3 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-light);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toc-sidebar a {
+    display: block;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 3px;
+    line-height: 1.5;
+    transition: background 0.15s, color 0.15s;
+  }
+  .toc-sidebar a:hover { background: var(--accent-light); color: var(--accent); }
+  .toc-sidebar a.indent { padding-left: 20px; font-size: 11.5px; }
+
+  @media (max-width: 1200px) {
+    .toc-sidebar { display: none; }
+    .page-container { margin-left: auto; }
+  }
+  @media (min-width: 1201px) {
+    .page-container { margin-left: 280px; }
+  }
+
+  /* ── Page header ── */
+  .page-header {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .page-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--text-light);
+  }
+  .page-meta strong { color: var(--text-muted); }
+
+  /* ── Headings ── */
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 28px 0 12px;
+  }
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin: 20px 0 8px;
+  }
+
+  /* ── Body text ── */
+  p { margin-bottom: 12px; }
+  p + p { margin-top: 0; }
+
+  /* ── Lists ── */
+  ul, ol { margin: 8px 0 16px 24px; }
+  li { margin-bottom: 4px; }
+  li > ul, li > ol { margin-top: 4px; margin-bottom: 4px; }
+
+  /* ── Info panel (Confluence-style) ── */
+  .panel {
+    border-radius: 3px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    border-left: 3px solid;
+  }
+  .panel-info { background: var(--accent-light); border-color: var(--accent); }
+  .panel-success { background: var(--green-light); border-color: var(--green); }
+  .panel-warning { background: var(--orange-light); border-color: var(--orange); }
+  .panel-note { background: var(--purple-light); border-color: var(--purple); }
+  .panel h4 { margin-top: 0; margin-bottom: 6px; font-size: 13px; }
+  .panel p { margin-bottom: 4px; }
+  .panel p:last-child { margin-bottom: 0; }
+
+  /* ── Code blocks ── */
+  code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--surface-2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--red);
+  }
+  pre {
+    background: #263238;
+    color: #eeffff;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 16px 20px;
+    border-radius: 3px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+    line-height: 1.6;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 13px;
+  }
+  th {
+    background: var(--surface);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  td {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:hover td { background: #fafbfc; }
+
+  /* ── Status lozenge (Confluence-style) ── */
+  .lozenge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
+  }
+  .loz-blue { background: var(--accent-light); color: var(--accent); }
+  .loz-green { background: var(--green-light); color: var(--green); }
+  .loz-red { background: var(--red-light); color: var(--red); }
+  .loz-orange { background: var(--orange-light); color: var(--orange); }
+  .loz-purple { background: var(--purple-light); color: var(--purple); }
+  .loz-cyan { background: var(--cyan-light); color: var(--cyan); }
+
+  /* ── Diagrams (CSS-only) ── */
+  .diagram-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    margin: 16px 0 20px;
+    overflow-x: auto;
+  }
+  .agent-flow {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .agent-node {
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+    min-width: 130px;
+    font-size: 12px;
+    transition: border-color 0.2s;
+  }
+  .agent-node:hover { border-color: var(--accent); }
+  .agent-node .name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .agent-node .role { color: var(--text-muted); font-size: 11px; }
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    font-size: 20px;
+    color: var(--text-light);
+    padding-top: 10px;
+  }
+  .agent-node.orchestrator { border-color: var(--accent); background: var(--accent-light); }
+  .agent-node.design { border-color: var(--pink); }
+  .agent-node.dev { border-color: var(--green); }
+  .agent-node.review { border-color: var(--red); }
+  .agent-node.report { border-color: var(--purple); }
+  .agent-node.user { border-color: var(--orange); background: var(--orange-light); }
+
+  /* ── Pipeline flow diagrams ── */
+  .pipeline-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 28px 24px;
+    margin: 20px 0 24px;
+  }
+  .pipeline-diagram h4 {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .pl-phase {
+    margin-bottom: 20px;
+  }
+  .pl-phase-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .pl-phase-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 13px;
+    flex-shrink: 0;
+    color: #fff;
+  }
+  .pl-phase-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .pl-phase-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+  .pl-step {
+    display: flex;
+    align-items: flex-start;
+    margin-left: 14px;
+    padding-left: 20px;
+    border-left: 2px solid var(--border);
+    padding-bottom: 8px;
+    position: relative;
+  }
+  .pl-step::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--border);
+  }
+  .pl-step.blue::before { border-color: var(--accent); }
+  .pl-step.green::before { border-color: var(--green); }
+  .pl-step.red::before { border-color: var(--red); }
+  .pl-step.orange::before { border-color: var(--orange); }
+  .pl-step.purple::before { border-color: var(--purple); }
+  .pl-step.cyan::before { border-color: var(--cyan); }
+  .pl-step.pink::before { border-color: var(--pink); }
+  .pl-step-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    flex: 1;
+    margin-left: 8px;
+  }
+  .pl-step-card .title {
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .pl-step-card .desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .pl-step-card .file-out {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--green);
+    margin-top: 4px;
+  }
+  .pl-parallel {
+    display: flex;
+    gap: 8px;
+    margin-left: 8px;
+    flex: 1;
+  }
+  .pl-parallel .pl-step-card { flex: 1; }
+  .pl-gate {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 8px 14px;
+    padding-left: 20px;
+  }
+  .pl-gate-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+  .pl-gate-label {
+    font-size: 10px;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+    padding: 2px 10px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+  .pl-decision {
+    margin-left: 42px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .pl-decision-opt {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .pl-decision-opt.yes { border-color: var(--green); color: var(--green); }
+  .pl-decision-opt.no { border-color: var(--red); color: var(--red); }
+  .pl-decision-opt.maybe { border-color: var(--orange); color: var(--orange); }
+  .pl-result {
+    background: var(--accent-light);
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px 18px;
+    text-align: center;
+    margin-top: 12px;
+  }
+  .pl-result h5 {
+    font-size: 13px;
+    color: var(--accent-dark);
+    margin-bottom: 6px;
+  }
+  .pl-result-stats {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .pl-result-stat {
+    text-align: center;
+  }
+  .pl-result-stat .val {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .pl-result-stat .lbl {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* ── Expandable sections ── */
+  details {
+    margin: 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  summary {
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    border-radius: 3px;
+    user-select: none;
+  }
+  summary:hover { background: var(--surface-2); }
+  details[open] summary { border-bottom: 1px solid var(--border); border-radius: 3px 3px 0 0; }
+  details > div { padding: 14px; }
+
+  /* ── Divider ── */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  /* ── Print ── */
+  @media print {
+    .toc-sidebar { display: none; }
+    .page-container { margin: 0; max-width: 100%; }
+    .panel { break-inside: avoid; }
+    details { break-inside: avoid; }
+    details[open] summary ~ div { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════ TOC SIDEBAR ════════════ -->
+<nav class="toc-sidebar">
+  <h3>On this page</h3>
+  <a href="#why">Why This Document Exists</a>
+  <a href="#core-idea">The Core Idea</a>
+  <a href="#architecture">Architecture Overview</a>
+  <a href="#agents">The Agent Team</a>
+  <a class="indent" href="#orchestrator">Orchestrator</a>
+  <a class="indent" href="#designer">UI Designer</a>
+  <a class="indent" href="#frontend-dev">Frontend Developer</a>
+  <a class="indent" href="#backend-dev">Backend Developer</a>
+  <a class="indent" href="#security">Security Auditor</a>
+  <a class="indent" href="#quality">Quality Engineer</a>
+  <a class="indent" href="#tester">Test Engineer</a>
+  <a class="indent" href="#code-analyst">Code Analyst</a>
+  <a class="indent" href="#doc-lead">Documentation Lead</a>
+  <a href="#communication">How Agents Communicate</a>
+  <a href="#commands">The Command System</a>
+  <a class="indent" href="#cmd-jira">Jira Pipeline</a>
+  <a class="indent" href="#cmd-feature">Feature Pipeline</a>
+  <a class="indent" href="#diagram-feature">Feature Flow Diagram</a>
+  <a class="indent" href="#cmd-devteam">Dev Team Loop</a>
+  <a class="indent" href="#cmd-testing">Testing Commands</a>
+  <a class="indent" href="#cmd-deps">Dependency Audit</a>
+  <a class="indent" href="#cmd-docker">Docker Pipeline</a>
+  <a class="indent" href="#diagram-pipeline">Full Pipeline Diagram</a>
+  <a href="#integrations">External Integrations</a>
+  <a href="#design-decisions">Key Design Decisions</a>
+  <a href="#patterns">Patterns That Work</a>
+  <a href="#antipatterns">Patterns That Don't</a>
+  <a href="#token-efficiency">Token Efficiency</a>
+  <a href="#lessons">Lessons Learned</a>
+  <a href="#whats-next">What's Next</a>
+</nav>
+
+<!-- ════════════ PAGE CONTENT ════════════ -->
+<div class="page-container">
+
+<div class="page-header">
+  <h1>Building an AI Development Team: How Agents Work Together to Ship Software</h1>
+  <div class="page-meta">
+    <span><strong>Date:</strong> 2026-03-19</span>
+    <span><strong>Author:</strong> Bard Ovrebo / Control Team</span>
+    <span><strong>Status:</strong> <span class="lozenge loz-green">Active</span></span>
+    <span><strong>Platform:</strong> Claude Code (Opus 4.6)</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="why">Why This Document Exists</h2>
+
+<p>Over the past weeks, I've built something that doesn't have a standard name yet: an AI development team. Not a single AI assistant that helps you code, but a coordinated system of specialized AI agents that take a Jira ticket, design the UI, implement the frontend and backend in parallel, review their own code for security issues, run tests, generate reports, and update Jira with the results — all from a single command.</p>
+
+<p>This document explains how it works. Not the marketing version — the actual architecture, the design decisions, the things that worked and the things that didn't. It's written for engineers and technical leads who want to understand what's possible with agent orchestration today, and what the practical constraints are.</p>
+
+<div class="panel panel-info">
+  <h4>What this is not</h4>
+  <p>This is not a product. It's a working prototype that runs against real Jira tickets and real codebases. The commands are Markdown files. The agents are Claude instances with specialized prompts. The "team" is a set of conventions for how those instances coordinate through files and tool calls. There is no custom infrastructure — it runs entirely within Claude Code's existing agent framework.</p>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="core-idea">The Core Idea: Markdown Files That Become AI Teams</h2>
+
+<p>Claude Code has a feature called <strong>custom slash commands</strong>. You write a Markdown file in <code>.claude/commands/</code>, and it becomes a command you can run in the terminal. The Markdown file is the prompt — it tells Claude what role to play, what steps to follow, what tools to use, and when to spawn sub-agents.</p>
+
+<p>The insight that makes this work: <strong>a sufficiently detailed Markdown prompt is an executable specification</strong>. If you describe a 5-phase pipeline with decision points, agent handoffs, and file-based communication — Claude will execute it. The Markdown file is simultaneously the documentation and the implementation.</p>
+
+<pre><code># Example: .claude/commands/jira.md (simplified)
+
+You are the **Jira Ticket Orchestrator**.
+Fetch the ticket, analyze it, plan the work,
+coordinate implementation agents, and update Jira.
+
+## PHASE 1: Fetch & Analyze
+Fetch the ticket via REST API...
+Ask the user for project paths...
+
+## PHASE 2: Design (if UI changes)
+Launch a UI Designer agent in Paper.design...
+Present designs to user for approval...
+
+## PHASE 3: Implementation
+Launch Frontend + Backend agents in parallel...
+
+## PHASE 4: Report & Update Jira
+Generate HTML report, post to Jira...</code></pre>
+
+<p>That's it. No framework, no SDK, no deployment pipeline. A Markdown file in a folder. When a user types <code>/jira FO-2847</code>, Claude reads the Markdown, and the pipeline begins.</p>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="architecture">Architecture Overview</h2>
+
+<p>The system has three layers:</p>
+
+<table>
+  <thead><tr><th>Layer</th><th>What It Is</th><th>Examples</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Commands</strong></td>
+      <td>Markdown files that define pipelines. Each command is a self-contained workflow with phases, decision points, and agent specifications.</td>
+      <td><code>/jira</code>, <code>/new-feature</code>, <code>/full-pipeline</code>, <code>/unit-test</code>, <code>/deps</code></td>
+    </tr>
+    <tr>
+      <td><strong>Agents</strong></td>
+      <td>Claude instances spawned by commands. Each agent has a specialized role, receives a detailed prompt, and works independently. Agents have no memory of each other — they communicate through files.</td>
+      <td>Security Auditor, Frontend Developer, UI Designer, Test Engineer, Code Analyst</td>
+    </tr>
+    <tr>
+      <td><strong>Integrations</strong></td>
+      <td>External systems that agents interact with via APIs, MCP servers, or CLI tools.</td>
+      <td>Jira REST API, JAM MCP, Paper MCP, Playwright, Docker, Git</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="diagram-box">
+  <div style="text-align:center; margin-bottom:16px; font-size:13px; font-weight:600; color:var(--text-muted);">System Architecture</div>
+  <div style="display:grid; grid-template-columns:1fr; gap:12px; max-width:600px; margin:0 auto;">
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <div class="agent-node user"><div class="name">User</div><div class="role">Types a command</div></div>
+    </div>
+    <div style="text-align:center; color:var(--text-light);">&#8595;</div>
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <div class="agent-node orchestrator"><div class="name">Orchestrator</div><div class="role">Reads the .md command<br>Plans, coordinates, asks user</div></div>
+    </div>
+    <div style="text-align:center; color:var(--text-light);">&#8595; spawns agents &#8595;</div>
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <div class="agent-node design"><div class="name">UI Designer</div><div class="role">Paper MCP</div></div>
+      <div class="agent-node dev"><div class="name">Frontend Dev</div><div class="role">Components, routes</div></div>
+      <div class="agent-node dev"><div class="name">Backend Dev</div><div class="role">APIs, DB, logic</div></div>
+      <div class="agent-node review"><div class="name">Code Analyst</div><div class="role">Security + quality</div></div>
+      <div class="agent-node" style="border-color:var(--cyan);"><div class="name">Test Engineer</div><div class="role">Unit + E2E tests</div></div>
+      <div class="agent-node report"><div class="name">Doc Lead</div><div class="role">HTML reports</div></div>
+    </div>
+    <div style="text-align:center; color:var(--text-light);">&#8595; communicate via &#8595;</div>
+    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <div class="agent-node" style="border-color:var(--text-light);min-width:100px;"><div class="name">reports/*.md</div><div class="role">File-based comms</div></div>
+      <div class="agent-node" style="border-color:var(--text-light);min-width:100px;"><div class="name">Jira API</div><div class="role">Tickets, comments</div></div>
+      <div class="agent-node" style="border-color:var(--text-light);min-width:100px;"><div class="name">JAM MCP</div><div class="role">Bug recordings</div></div>
+      <div class="agent-node" style="border-color:var(--text-light);min-width:100px;"><div class="name">Paper MCP</div><div class="role">Design tool</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="agents">The Agent Team: Roles and Responsibilities</h2>
+
+<p>Each agent is a Claude instance with a specialized prompt. When the orchestrator spawns an agent, it passes the full context that agent needs: the ticket details, the stack profile, the file paths, and the specific task. Agents don't know about each other — they each do their job and write their output to a report file.</p>
+
+<h3 id="orchestrator">The Orchestrator <span class="lozenge loz-blue">You</span></h3>
+<p>The orchestrator isn't a separate agent — it's the main Claude instance running the command. It's the only one that can interact with the user. It reads the command Markdown, executes the phases, spawns sub-agents, and presents results for user approval.</p>
+<p><strong>Responsibilities:</strong></p>
+<ul>
+  <li>Fetch and parse Jira tickets</li>
+  <li>Detect project stack and ask user for paths</li>
+  <li>Classify work scope (UI / Backend / Full-stack)</li>
+  <li>Present plans and designs for user approval</li>
+  <li>Spawn and coordinate all other agents</li>
+  <li>Post results back to Jira</li>
+</ul>
+
+<div class="panel panel-note">
+  <h4>Why the orchestrator asks the user, not the agents</h4>
+  <p>Sub-agents cannot interact with the user. Only the main Claude instance (the orchestrator) can ask questions, present options, and get approvals. This is a Claude Code constraint, not a design choice — but it's actually a good constraint. It means all user-facing decisions flow through a single point, which makes the pipeline predictable and auditable.</p>
+</div>
+
+<h3 id="designer">UI Designer <span class="lozenge loz-cyan">Design Agent</span></h3>
+<p>Creates visual mockups in Paper.design using MCP tools. Reads the feature plan, existing code patterns, and any screenshots of the current app. Produces artboards with HTML/CSS designs and writes a design specification.</p>
+<p><strong>Tools used:</strong> <code>mcp__paper__create_artboard</code>, <code>mcp__paper__write_html</code>, <code>mcp__paper__get_screenshot</code>, <code>mcp__paper__get_jsx</code></p>
+<p><strong>Output:</strong> Paper artboards + <code>reports/feature-ui-plan.md</code></p>
+<p><strong>Key constraint:</strong> The user MUST review and approve designs before implementation begins. This is a hard gate — no code is written until designs are approved.</p>
+
+<h3 id="frontend-dev">Frontend Developer <span class="lozenge loz-green">Implementation Agent</span></h3>
+<p>Implements UI changes based on the approved design spec and feature plan. Creates components, pages, routes, hooks. Updates navigation. Follows the existing project's patterns and the API contract exactly.</p>
+<p><strong>Input:</strong> Feature plan + UI design spec + existing codebase patterns</p>
+<p><strong>Output:</strong> <code>reports/feature-ui-implementation.md</code></p>
+<p><strong>Runs in parallel with:</strong> Backend Developer (when scope is full-stack)</p>
+
+<h3 id="backend-dev">Backend Developer <span class="lozenge loz-green">Implementation Agent</span></h3>
+<p>Implements API endpoints, database schema changes, middleware. Uses parameterized SQL, proper auth, input validation. Follows the API contract from the feature plan exactly.</p>
+<p><strong>Input:</strong> Feature plan + existing codebase patterns</p>
+<p><strong>Output:</strong> <code>reports/feature-backend-implementation.md</code></p>
+<p><strong>Also used for:</strong> Fixing issues found by Security Auditor and Quality Engineer in the dev-team loop</p>
+
+<h3 id="security">Security Auditor <span class="lozenge loz-red">Review Agent</span></h3>
+<p>Scans every source file for OWASP Top 10 vulnerabilities: injection, broken auth, data exposure, XSS, access control, misconfiguration. Categorizes findings as CRITICAL, WARNING, or INFO.</p>
+<p><strong>Output:</strong> <code>reports/security-audit.md</code></p>
+<p><strong>Runs in parallel with:</strong> Code Quality Engineer</p>
+
+<h3 id="quality">Code Quality Engineer <span class="lozenge loz-orange">Review Agent</span></h3>
+<p>Scans for code smells, bugs, anti-patterns: type safety issues, error handling gaps, performance problems, dead code, API design issues. Same severity categorization.</p>
+<p><strong>Output:</strong> <code>reports/quality-audit.md</code></p>
+
+<h3 id="tester">Test Engineer <span class="lozenge loz-cyan">Testing Agent</span></h3>
+<p>Writes unit tests for every fix. Covers edge cases and security regression scenarios. Runs all tests (existing + new) and iterates until 100% pass. Supports 9 stacks: Java/JUnit, C#/xUnit, JS/Jest, Python/pytest, Go, Rust, PHP, Ruby.</p>
+<p><strong>Output:</strong> <code>reports/test-report.md</code> or <code>reports/unit-test-report.html</code></p>
+
+<h3 id="code-analyst">Code Analyst <span class="lozenge loz-red">Review Agent</span></h3>
+<p>Reviews ONLY the git diff — not the entire codebase. Checks new code for SQL injection, XSS, command injection, hardcoded secrets, null refs, race conditions, missing auth. Auto-fixes critical issues.</p>
+<p><strong>Output:</strong> <code>reports/code-analysis.md</code></p>
+<p><strong>Key distinction from Security Auditor:</strong> The Security Auditor scans the whole codebase. The Code Analyst reviews only what changed. One is for audits, the other is for pull request-style review.</p>
+
+<h3 id="doc-lead">Documentation Lead <span class="lozenge loz-purple">Report Agent</span></h3>
+<p>Compiles all agent reports into a single, polished HTML report. Dark theme, collapsible sections, severity badges, code snippets, testing checklists. The report is the artifact that gets attached to the Jira ticket.</p>
+<p><strong>Input:</strong> All <code>reports/*.md</code> files from other agents</p>
+<p><strong>Output:</strong> <code>reports/master-report.html</code> or <code>reports/feature-report.html</code> or <code>reports/jira-{KEY}-report.html</code></p>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="communication">How Agents Communicate</h2>
+
+<p>Agents don't talk to each other directly. They communicate through three mechanisms:</p>
+
+<h3>1. Report Files (Primary)</h3>
+<p>Every agent writes its output to a file in <code>reports/</code>. The orchestrator reads these files and passes relevant content to downstream agents. For example:</p>
+<ol>
+  <li>Security Auditor writes findings to <code>reports/security-audit.md</code></li>
+  <li>Quality Engineer writes findings to <code>reports/quality-audit.md</code></li>
+  <li>Orchestrator spawns Backend Developer, telling it: "Read the findings from both reports and fix everything"</li>
+  <li>Backend Developer writes what it changed to <code>reports/fixes-applied.md</code></li>
+  <li>Orchestrator spawns Test Engineer, telling it: "Read the fixes and write tests for each one"</li>
+</ol>
+
+<p>This is effectively a <strong>message-passing system where the messages are Markdown files</strong>. It's simple, inspectable (you can read the files), and robust (files don't disappear if an agent crashes).</p>
+
+<h3>2. Prompt Injection (Secondary)</h3>
+<p>When the orchestrator spawns an agent, it includes all necessary context directly in the prompt. The agent receives: the Jira ticket details, the stack profile, the file paths, the design spec, and whatever else it needs. This is redundant with the file system, but it ensures the agent has everything without needing to read files first.</p>
+
+<h3>3. Tool Calls (External Systems)</h3>
+<p>Agents interact with external systems via tool calls: Jira REST API (via curl), Paper MCP tools, JAM MCP tools, Docker CLI, Git commands, Playwright. The orchestrator handles Jira authentication centrally (credentials are in <code>.env</code>), and agents inherit this through sourcing the same file.</p>
+
+<div class="diagram-box">
+  <div style="text-align:center; margin-bottom:16px; font-size:13px; font-weight:600; color:var(--text-muted);">Communication Flow (Jira Pipeline Example)</div>
+  <pre style="background:none; color:var(--text); font-size:12px; margin:0; text-align:center; line-height:2;">
+User: /jira FO-2847
+  │
+  ▼
+Orchestrator ──── curl ────▶ Jira REST API (fetch ticket)
+  │                           │
+  │ ◄── ticket JSON ──────────┘
+  │
+  ├── Detect JAM links? ──── mcp ────▶ JAM MCP (video analysis)
+  │
+  ├── Ask user for project paths (AskUserQuestion)
+  │
+  ├── UI changes? ──── spawn ────▶ UI Designer Agent ──── mcp ────▶ Paper MCP
+  │                                   │
+  │ ◄── reports/feature-ui-plan.md ───┘
+  │
+  ├── User approves designs? (AskUserQuestion)
+  │
+  ├── spawn (parallel) ──────▶ Frontend Dev Agent ──▶ reports/feature-ui-implementation.md
+  │                    └─────▶ Backend Dev Agent  ──▶ reports/feature-backend-implementation.md
+  │
+  ├── spawn ──────────────────▶ Code Analyst ──▶ reports/code-analysis.md
+  │
+  ├── spawn ──────────────────▶ Doc Lead ──▶ reports/jira-FO-2847-report.html
+  │
+  ├── curl ────▶ Jira (upload report + screenshots + comment)
+  │
+  └── curl ────▶ Jira (transition status + log time)
+  </pre>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="commands">The Command System: 21 Slash Commands</h2>
+
+<p>Each command is a Markdown file in <code>.claude/commands/</code>. Some are standalone (single agent, single task), others are orchestrators that spawn multiple agents across phases. Here's the full inventory:</p>
+
+<h3 id="cmd-jira">Jira Pipeline <span class="lozenge loz-orange">Project Management</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th><th>Phases</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>/jira FO-2847</code></td>
+      <td>Full ticket-to-resolution pipeline. Fetches ticket, detects JAM recordings, classifies scope, asks for project paths, designs in Paper (if UI), implements, reviews code, generates report, updates Jira (comment + attachments + status + time).</td>
+      <td>5 phases</td>
+    </tr>
+    <tr>
+      <td><code>/jira sprint</code></td>
+      <td>Batch mode. Fetches available Scrum teams dynamically, user picks a team, fetches sprint tickets, user selects which to process, runs each through the full pipeline sequentially with continue/skip/stop controls.</td>
+      <td>5 phases per ticket</td>
+    </tr>
+    <tr>
+      <td><code>/jira teams</code></td>
+      <td>Lists all available Scrum teams from Jira. Instant lookup, no processing.</td>
+      <td>Instant</td>
+    </tr>
+    <tr>
+      <td><code>/jam {url}</code></td>
+      <td>Analyzes JAM bug recordings via MCP. Fetches video analysis, console logs, network requests, user events. Accepts URL, JAM ID, or Jira ticket key.</td>
+      <td>MCP-based</td>
+    </tr>
+    <tr>
+      <td><code>/tempo</code></td>
+      <td>Time logging. <code>/tempo addTime FO-2847 2h "Bug fix"</code>. Also supports <code>getTime</code>, <code>getWeek</code>, <code>getMonth</code> for viewing logged time.</td>
+      <td>Instant</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="panel panel-warning">
+  <h4>Mandatory user interaction: project paths</h4>
+  <p>The Jira pipeline <strong>always asks the user</strong> which project directories to work in. It never guesses. This was a deliberate decision after the AI incorrectly routed work to the wrong codebase. The current working directory (<code>d:\Kunder\247\AIComp</code>) is the orchestration project — it contains the commands and configs, not the actual code. The real codebases are at separate paths like <code>D:\Kunder\247\Finago\control-backend-api</code>.</p>
+</div>
+
+<h3 id="cmd-feature">Feature Development Pipeline <span class="lozenge loz-purple">Design + Implementation</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th><th>Agents Involved</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>/new-feature</code></td>
+      <td>6-phase pipeline: plan feature, capture existing UI screenshots, design in Paper (user approval gate), parallel frontend + backend implementation, code analysis, master report. Optional handoff to <code>/full-pipeline</code> for testing.</td>
+      <td>Orchestrator, UI Designer, Frontend Dev, Backend Dev, Code Analyst, Doc Lead</td>
+    </tr>
+    <tr>
+      <td><code>/code-analysis</code></td>
+      <td>Reviews only the git diff. Checks for security issues, logic errors, quality problems. Auto-fixes critical issues.</td>
+      <td>Code Analyst (single agent)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="pipeline-diagram" id="diagram-feature">
+<h4>/new-feature &mdash; Feature Development Pipeline</h4>
+
+<!-- Phase 1 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--accent);">1</div>
+    <span class="pl-phase-title">Feature Planning</span>
+    <span class="pl-phase-sub">&mdash; Orchestrator (you) does this directly</span>
+  </div>
+  <div class="pl-step pink">
+    <div class="pl-step-card">
+      <div class="title"><span class="lozenge loz-orange">User</span> Ask for Project Paths</div>
+      <div class="desc">Detect stack (package.json, *.csproj, pom.xml). Always ask user for backend/frontend/database paths. Build Stack Profile for all agents.</div>
+    </div>
+  </div>
+  <div class="pl-step blue">
+    <div class="pl-step-card">
+      <div class="title">Analyze Codebase</div>
+      <div class="desc">Read project structure, routing, components, APIs, DB models. Adapt to detected stack.</div>
+    </div>
+  </div>
+  <div class="pl-step blue">
+    <div class="pl-step-card">
+      <div class="title">Draft Feature Plan</div>
+      <div class="desc">Summary, scope (UI/Backend/Full-stack), API contract, DB schema changes, UI components, risks.</div>
+      <div class="file-out">&#8594; reports/feature-plan.md</div>
+    </div>
+  </div>
+  <div class="pl-step pink">
+    <div class="pl-step-card" style="border-color:var(--orange); background:var(--orange-light);">
+      <div class="title"><span class="lozenge loz-orange">Gate</span> User Approval</div>
+      <div class="desc">Present plan. User: <strong>Approve</strong> / Request changes (iterate) / Reject. No code written until approved.</div>
+    </div>
+  </div>
+  <div class="pl-step orange">
+    <div class="pl-step-card">
+      <div class="title">Scope Decision</div>
+      <div class="desc">
+        <span class="pl-decision-opt yes" style="margin-right:4px;">Full-stack / UI &rarr; Phase 2-3-4</span>
+        <span class="pl-decision-opt maybe">Backend-only &rarr; Skip to Phase 4</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-gate"><div class="pl-gate-line"></div><div class="pl-gate-label">Gate: user approved plan</div><div class="pl-gate-line"></div></div>
+
+<!-- Phase 2 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--cyan);">2</div>
+    <span class="pl-phase-title">Visual Capture</span>
+    <span class="pl-phase-sub">&mdash; UI changes only</span>
+  </div>
+  <div class="pl-step cyan">
+    <div class="pl-step-card">
+      <div class="title">Playwright Screenshots</div>
+      <div class="desc">Check if app running (localhost:3000/5173/4200). Capture BEFORE screenshots of relevant pages as design reference.</div>
+      <div class="file-out">&#8594; reports/screenshots/*.png</div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-gate"><div class="pl-gate-line"></div><div class="pl-gate-label">Gate: screenshots captured</div><div class="pl-gate-line"></div></div>
+
+<!-- Phase 3 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:#e774bb;">3</div>
+    <span class="pl-phase-title">UI Design in Paper</span>
+    <span class="pl-phase-sub">&mdash; mandatory for any UI change</span>
+  </div>
+  <div class="pl-step cyan">
+    <div class="pl-step-card">
+      <div class="title"><span class="lozenge loz-cyan">Agent</span> UI Designer</div>
+      <div class="desc">Creates artboards in Paper.design via MCP. Reads feature plan + existing code patterns + screenshots. Writes design spec.</div>
+      <div class="file-out">&#8594; Paper artboards + reports/feature-ui-plan.md</div>
+    </div>
+  </div>
+  <div class="pl-step pink">
+    <div class="pl-step-card" style="border-color:var(--orange); background:var(--orange-light);">
+      <div class="title"><span class="lozenge loz-orange">Gate</span> Design Review</div>
+      <div class="desc">User opens Paper to review. <strong>Accept</strong> (proceed) / <strong>Change</strong> (re-launch designer) / <strong>Reject</strong> (new direction). No code until approved.</div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-gate"><div class="pl-gate-line"></div><div class="pl-gate-label">Gate: user approved designs</div><div class="pl-gate-line"></div></div>
+
+<!-- Phase 4 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--green);">4</div>
+    <span class="pl-phase-title">Parallel Implementation</span>
+    <span class="pl-phase-sub">&mdash; agents build simultaneously</span>
+  </div>
+  <div class="pl-step green">
+    <div class="pl-parallel">
+      <div class="pl-step-card" style="border-left:3px solid var(--cyan);">
+        <div class="title"><span class="lozenge loz-cyan">Agent</span> Frontend Dev</div>
+        <div class="desc">Components, pages, routes, hooks. Follows approved design + API contract.</div>
+        <div class="file-out">&#8594; reports/feature-ui-implementation.md</div>
+      </div>
+      <div class="pl-step-card" style="border-left:3px solid var(--green);">
+        <div class="title"><span class="lozenge loz-green">Agent</span> Backend Dev</div>
+        <div class="desc">APIs, DB schema, middleware, validation. Parameterized SQL, proper auth.</div>
+        <div class="file-out">&#8594; reports/feature-backend-implementation.md</div>
+      </div>
+    </div>
+  </div>
+  <div class="pl-step red">
+    <div class="pl-step-card" style="border-left:3px solid var(--red);">
+      <div class="title"><span class="lozenge loz-red">Agent</span> Code Analyst</div>
+      <div class="desc">Reviews ONLY the git diff. SQL injection, XSS, secrets, null refs, race conditions. Auto-fixes critical issues.</div>
+      <div class="file-out">&#8594; reports/code-analysis.md</div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-gate"><div class="pl-gate-line"></div><div class="pl-gate-label">Gate: implementation + code review complete</div><div class="pl-gate-line"></div></div>
+
+<!-- Phase 5 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--purple);">5</div>
+    <span class="pl-phase-title">Master Report</span>
+  </div>
+  <div class="pl-step purple">
+    <div class="pl-step-card" style="border-left:3px solid var(--purple);">
+      <div class="title"><span class="lozenge loz-purple">Agent</span> Documentation Lead</div>
+      <div class="desc">Compiles all reports: plan, design, frontend, backend, code analysis. Produces polished HTML report with 8 sections.</div>
+      <div class="file-out">&#8594; reports/feature-report.html</div>
+    </div>
+  </div>
+</div>
+
+<!-- Phase 6 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--text-light);">6</div>
+    <span class="pl-phase-title">Optional Testing</span>
+    <span class="pl-phase-sub">&mdash; handoff to /full-pipeline</span>
+  </div>
+  <div class="pl-step pink">
+    <div class="pl-step-card">
+      <div class="title"><span class="lozenge loz-orange">User</span> Decision</div>
+      <div class="desc">Run full testing pipeline (security, quality, unit tests, E2E)? If yes &rarr; <code>/full-pipeline</code></div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-result">
+  <h5>Feature Development Complete</h5>
+  <div class="pl-result-stats">
+    <div class="pl-result-stat"><div class="val">6</div><div class="lbl">Phases</div></div>
+    <div class="pl-result-stat"><div class="val">4</div><div class="lbl">Agents</div></div>
+    <div class="pl-result-stat"><div class="val">2</div><div class="lbl">User Gates</div></div>
+    <div class="pl-result-stat"><div class="val">5</div><div class="lbl">Reports</div></div>
+  </div>
+</div>
+</div>
+
+<h3 id="cmd-devteam">Development Team Loop <span class="lozenge loz-red">Iterative Quality</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th><th>Agents Involved</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>/dev-team</code></td>
+      <td>Iterative quality loop: parallel security + quality scan, fix all issues, write tests, re-scan. Repeats until zero new findings. Typically 2-3 rounds.</td>
+      <td>Security Auditor, Quality Engineer, Backend Developer, Test Engineer, Doc Lead</td>
+    </tr>
+    <tr>
+      <td><code>/security-audit</code></td>
+      <td>Standalone OWASP Top 10 scan.</td>
+      <td>Security Auditor</td>
+    </tr>
+    <tr>
+      <td><code>/quality-audit</code></td>
+      <td>Standalone code quality scan.</td>
+      <td>Quality Engineer</td>
+    </tr>
+    <tr>
+      <td><code>/fix-all</code></td>
+      <td>Fix all findings from audit reports.</td>
+      <td>Backend Developer</td>
+    </tr>
+    <tr>
+      <td><code>/test-all</code></td>
+      <td>Write tests for all fixes and run them.</td>
+      <td>Test Engineer</td>
+    </tr>
+    <tr>
+      <td><code>/master-report</code></td>
+      <td>Compile all reports into master HTML.</td>
+      <td>Documentation Lead</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="cmd-testing">Testing &amp; Dependencies <span class="lozenge loz-cyan">Quality Assurance</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th><th>Modes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>/unit-test</code></td>
+      <td>Maps existing test coverage, identifies gaps, creates unit tests, runs and fixes them iteratively (up to 5 rounds). Supports 9 language stacks.</td>
+      <td><code>*</code> (full scan), <code>{file}</code> (single), <code>--fix-ignored</code> (rehabilitate disabled tests)</td>
+    </tr>
+    <tr>
+      <td><code>/playwright-test</code></td>
+      <td>Runs Playwright E2E browser tests. Analyzes failures, distinguishes app bugs from test bugs, writes missing tests, generates HTML report.</td>
+      <td>Single mode</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="cmd-deps">Dependency Health <span class="lozenge loz-red">Security &amp; Maintenance</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th><th>Modes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>/deps</code></td>
+      <td>Scans dependencies for CVEs (with exploitability assessment), outdated packages (staleness score), and license risks (GPL/copyleft detection). Produces a health score 0-100 with letter grade A-F. Can auto-fix safe updates or export Dependabot/Renovate configs.</td>
+      <td>Full audit, <code>--vuln-only</code>, <code>--outdated</code>, <code>--license</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="cmd-docker">Docker Pipeline <span class="lozenge loz-green">DevOps</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>/docker-build</code></td><td>Build Docker image, validate (size, non-root, health check, no secrets), security scan.</td></tr>
+    <tr><td><code>/docker-deploy</code></td><td>Deploy with docker compose, wait for health check, test endpoints, collect container info.</td></tr>
+    <tr><td><code>/docker-test</code></td><td>Full integration test suite against live container.</td></tr>
+    <tr><td><code>/docker-teardown</code></td><td>Gracefully tear down containers, report freed resources.</td></tr>
+    <tr><td><code>/full-pipeline</code></td><td>All of the above: dev-team loop + Playwright + Docker build/deploy/test + master report.</td></tr>
+  </tbody>
+</table>
+
+<div class="pipeline-diagram" id="diagram-pipeline">
+<h4>/full-pipeline &mdash; End-to-End Delivery Pipeline</h4>
+
+<!-- Phase 1 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--red);">1</div>
+    <span class="pl-phase-title">Code Quality Loop</span>
+    <span class="pl-phase-sub">&mdash; iterative: scan &rarr; fix &rarr; test &rarr; verify until zero findings</span>
+  </div>
+  <div class="pl-step red">
+    <div class="pl-parallel">
+      <div class="pl-step-card" style="border-left:3px solid var(--red);">
+        <div class="title"><span class="lozenge loz-red">Agent</span> Security Auditor</div>
+        <div class="desc">OWASP Top 10 scan. Injection, XSS, broken auth, data exposure, misconfig.</div>
+        <div class="file-out">&#8594; reports/security-audit.md</div>
+      </div>
+      <div class="pl-step-card" style="border-left:3px solid var(--orange);">
+        <div class="title"><span class="lozenge loz-orange">Agent</span> Quality Engineer</div>
+        <div class="desc">Code smells, bugs, anti-patterns. Type safety, error handling, dead code.</div>
+        <div class="file-out">&#8594; reports/quality-audit.md</div>
+      </div>
+    </div>
+  </div>
+  <div class="pl-step green">
+    <div class="pl-step-card" style="border-left:3px solid var(--green);">
+      <div class="title"><span class="lozenge loz-green">Agent</span> Backend Developer</div>
+      <div class="desc">Reads both audit reports. Fixes ALL issues by severity: Critical &rarr; Warning &rarr; Info.</div>
+      <div class="file-out">&#8594; reports/fixes-applied.md</div>
+    </div>
+  </div>
+  <div class="pl-step cyan">
+    <div class="pl-step-card" style="border-left:3px solid var(--cyan);">
+      <div class="title"><span class="lozenge loz-cyan">Agent</span> Test Engineer</div>
+      <div class="desc">Writes unit tests for every fix. Edge cases + security regression tests. Runs all tests, iterates until 100% pass.</div>
+      <div class="file-out">&#8594; reports/test-report.md</div>
+    </div>
+  </div>
+  <div class="pl-step orange">
+    <div class="pl-step-card">
+      <div class="title">Regression Check</div>
+      <div class="desc">Re-run Security + Quality scans on modified code.
+        <span class="pl-decision-opt no" style="margin-left:6px;">New issues &rarr; loop back</span>
+        <span class="pl-decision-opt yes" style="margin-left:4px;">Zero findings &rarr; proceed</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-gate"><div class="pl-gate-line"></div><div class="pl-gate-label">Gate: zero findings + all unit tests pass</div><div class="pl-gate-line"></div></div>
+
+<!-- Phase 2 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--cyan);">2</div>
+    <span class="pl-phase-title">Playwright E2E Testing</span>
+    <span class="pl-phase-sub">&mdash; browser-based end-to-end tests</span>
+  </div>
+  <div class="pl-step cyan">
+    <div class="pl-step-card" style="border-left:3px solid var(--cyan);">
+      <div class="title"><span class="lozenge loz-cyan">Agent</span> Playwright E2E Engineer</div>
+      <div class="desc">Full test suite: auth flows, CRUD, user management, orders, security (XSS, auth bypass, data leaks). Distinguishes app bugs from test bugs. Writes missing tests for coverage gaps.</div>
+      <div class="file-out">&#8594; reports/playwright-report/ + reports/playwright-test-report.md</div>
+    </div>
+  </div>
+  <div class="pl-step orange">
+    <div class="pl-step-card">
+      <div class="title">Failure Triage</div>
+      <div class="desc">
+        <span class="pl-decision-opt no" style="margin-right:4px;">App bug &rarr; fix source, re-run unit + E2E</span>
+        <span class="pl-decision-opt maybe" style="margin-right:4px;">Test bug &rarr; fix test, re-run E2E</span>
+        <span class="pl-decision-opt yes">All pass &rarr; proceed</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-gate"><div class="pl-gate-line"></div><div class="pl-gate-label">Gate: all E2E tests pass</div><div class="pl-gate-line"></div></div>
+
+<!-- Phase 3 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--green);">3</div>
+    <span class="pl-phase-title">Docker Pipeline</span>
+    <span class="pl-phase-sub">&mdash; build, deploy, verify, integration test</span>
+  </div>
+  <div class="pl-step cyan">
+    <div class="pl-step-card">
+      <div class="title"><span class="lozenge loz-cyan">Agent</span> Docker Build</div>
+      <div class="desc"><code>docker compose build</code> &mdash; validate image size, non-root user, health check, no secrets in layers.</div>
+      <div class="file-out">&#8594; reports/docker-build-report.md</div>
+    </div>
+  </div>
+  <div class="pl-step green">
+    <div class="pl-step-card">
+      <div class="title"><span class="lozenge loz-green">Agent</span> Docker Deploy</div>
+      <div class="desc"><code>docker compose up -d</code> &mdash; health check, test endpoints, collect container ID, IP, ports, network.</div>
+      <div class="file-out">&#8594; reports/docker-deploy-report.md</div>
+    </div>
+  </div>
+  <div class="pl-step cyan">
+    <div class="pl-step-card">
+      <div class="title"><span class="lozenge loz-cyan">Agent</span> Integration Tests</div>
+      <div class="desc">Full test suite against live container: auth, CRUD, security, edge cases. Records every request/response.</div>
+      <div class="file-out">&#8594; reports/docker-integration-test-report.md</div>
+    </div>
+  </div>
+  <div class="pl-step orange">
+    <div class="pl-step-card">
+      <div class="title">Pass / Fail</div>
+      <div class="desc">
+        <span class="pl-decision-opt no" style="margin-right:4px;">Fail &rarr; fix, rebuild, redeploy, retest</span>
+        <span class="pl-decision-opt yes">All pass &rarr; container stays running</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-gate"><div class="pl-gate-line"></div><div class="pl-gate-label">Gate: integration tests pass + container healthy</div><div class="pl-gate-line"></div></div>
+
+<!-- Phase 4 -->
+<div class="pl-phase">
+  <div class="pl-phase-head">
+    <div class="pl-phase-num" style="background:var(--purple);">4</div>
+    <span class="pl-phase-title">Master Report</span>
+  </div>
+  <div class="pl-step purple">
+    <div class="pl-step-card" style="border-left:3px solid var(--purple);">
+      <div class="title"><span class="lozenge loz-purple">Agent</span> Documentation Lead</div>
+      <div class="desc">Compiles ALL agent reports into a single master HTML report: security audit, code quality, fixes, tests, Docker build, deployment info, integration tests, recommendations.</div>
+      <div class="file-out">&#8594; reports/master-report.html</div>
+    </div>
+  </div>
+</div>
+
+<div class="pl-result">
+  <h5>Pipeline Complete</h5>
+  <div class="pl-result-stats">
+    <div class="pl-result-stat"><div class="val">42</div><div class="lbl">Issues fixed</div></div>
+    <div class="pl-result-stat"><div class="val">187</div><div class="lbl">Unit tests</div></div>
+    <div class="pl-result-stat"><div class="val">20</div><div class="lbl">E2E tests</div></div>
+    <div class="pl-result-stat"><div class="val">100%</div><div class="lbl">Pass rate</div></div>
+    <div class="pl-result-stat"><div class="val">9+</div><div class="lbl">Agents</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="integrations">External Integrations</h2>
+
+<table>
+  <thead><tr><th>System</th><th>Protocol</th><th>What It's Used For</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Jira</strong></td>
+      <td>REST API (curl)</td>
+      <td>Fetch tickets, post comments, upload attachments, transition status, log time. Credentials in <code>.env</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>JAM</strong> (jam.dev)</td>
+      <td>MCP Server</td>
+      <td>Analyze bug recordings: video analysis, console logs, network requests, user events, screenshots. Auto-detected in Jira ticket descriptions and comments.</td>
+    </tr>
+    <tr>
+      <td><strong>Paper</strong> (paper.design)</td>
+      <td>MCP Server</td>
+      <td>Create UI mockups: artboards, HTML/CSS designs, screenshots, JSX export. Used in both <code>/jira</code> (for UI-related tickets) and <code>/new-feature</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Docker</strong></td>
+      <td>CLI</td>
+      <td>Build images, deploy containers, run integration tests, teardown.</td>
+    </tr>
+    <tr>
+      <td><strong>Playwright</strong></td>
+      <td>CLI (npx)</td>
+      <td>Browser-based E2E testing, screenshot capture for before/after comparisons.</td>
+    </tr>
+    <tr>
+      <td><strong>Git</strong></td>
+      <td>CLI</td>
+      <td>Diff detection for code analysis, branch management.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="design-decisions">Key Design Decisions (and Why)</h2>
+
+<h3>1. File-based communication, not memory</h3>
+<p><strong>Decision:</strong> Agents communicate through <code>reports/*.md</code> files, not through shared memory or context.</p>
+<p><strong>Why:</strong> Sub-agents in Claude Code start with a fresh context. They have no memory of the parent or other agents. Files are the natural handoff mechanism — they're persistent, inspectable, and don't depend on context window management. An agent that writes to <code>reports/security-audit.md</code> produces an artifact that any other agent (or human) can read.</p>
+
+<h3>2. Always ask the user for project paths</h3>
+<p><strong>Decision:</strong> The pipeline never auto-detects which codebase to work in. It always asks.</p>
+<p><strong>Why:</strong> The AI incorrectly assumed a ticket belonged to <code>gateway-backend</code> when it was actually <code>control-backend-api</code>. In a multi-project environment, the cost of working in the wrong codebase is catastrophic — you're modifying the wrong code. Asking takes 5 seconds. Fixing a wrong-codebase mistake takes much longer.</p>
+
+<h3>3. User approval gates before implementation</h3>
+<p><strong>Decision:</strong> Two mandatory approval points: (1) the feature plan, and (2) the UI design. No code is written until both are approved.</p>
+<p><strong>Why:</strong> Agent work is cheap to redo at the planning stage but expensive at the implementation stage. A wrong plan means multiple agents building the wrong thing. Catching misunderstandings at the plan/design stage saves massive amounts of token spend and time.</p>
+
+<h3>4. Parallel agents where possible, sequential where necessary</h3>
+<p><strong>Decision:</strong> Security + Quality scans run in parallel. Frontend + Backend implementation run in parallel. But design must complete before implementation, and implementation must complete before code review.</p>
+<p><strong>Why:</strong> True parallelism saves time (two agents working simultaneously is faster than two agents working sequentially). But dependencies must be respected: you can't implement a UI that hasn't been designed, and you can't review code that hasn't been written.</p>
+
+<h3>5. Stack-agnostic commands with runtime detection</h3>
+<p><strong>Decision:</strong> Commands like <code>/unit-test</code> and <code>/deps</code> detect the project's tech stack at runtime and adapt their behavior. The same command works for Java/Maven, C#/.NET, JavaScript/npm, Python/pip, Go, Rust, PHP, and Ruby.</p>
+<p><strong>Why:</strong> We work across multiple stacks (Java backend, React frontend, .NET APIs). Having separate commands per stack would be unmaintainable. Runtime detection lets one command serve all projects.</p>
+
+<h3>6. Mandatory reports for every pipeline</h3>
+<p><strong>Decision:</strong> Every pipeline generates an HTML report, regardless of whether the user asked for one.</p>
+<p><strong>Why:</strong> Reports serve three purposes: (1) they're the artifact that gets uploaded to Jira, (2) they're the communication mechanism between agents, and (3) they're the audit trail. If something goes wrong, the report tells you what each agent did and found.</p>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="patterns">Patterns That Work Well</h2>
+
+<h3>The Iterative Loop Pattern</h3>
+<p>Used in <code>/dev-team</code> and <code>/unit-test</code>. Scan, fix, verify, re-scan. Continue until zero findings. This is the most reliable pattern because it's self-correcting: if a fix introduces a new issue, the next scan catches it.</p>
+
+<h3>The Scope-Based Branching Pattern</h3>
+<p>Used in <code>/jira</code> and <code>/new-feature</code>. Classify the work as UI-only, backend-only, or full-stack, then branch the pipeline accordingly. UI-only skips backend agents. Backend-only skips design and frontend. Full-stack runs everything.</p>
+
+<h3>The Parallel-Then-Merge Pattern</h3>
+<p>Launch two or more agents simultaneously, wait for all to complete, then merge their outputs into the next step. Used for Security + Quality scanning, and for Frontend + Backend implementation.</p>
+
+<h3>The User Gate Pattern</h3>
+<p>Present results to the user with explicit options (Accept / Change / Reject). Block pipeline progression until the user responds. Used for plan approval, design review, and Jira update decisions.</p>
+
+<h3>The Project Name Resolution Pattern</h3>
+<p>Commands accept either a full path or a project name (e.g., <code>control-backend-api</code>). The system resolves names to paths based on known project directories. If resolution fails, it asks the user. This makes commands feel like CLI tools — short, memorable invocations.</p>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="antipatterns">Patterns That Don't Work</h2>
+
+<h3>Letting agents guess project paths</h3>
+<p>This caused the AI to work in the wrong codebase. Never again. Always ask.</p>
+
+<h3>One giant agent that does everything</h3>
+<p>A single agent trying to scan, fix, test, and report in one go produces worse results than specialized agents. The context window gets polluted with too many concerns, and the agent loses focus. Specialization works.</p>
+
+<h3>Skipping the design phase "because it's a small change"</h3>
+<p>Even a one-line color change benefits from a Paper mockup. The user seeing the change before it's implemented catches misunderstandings that are trivial to fix at design time and expensive to fix after implementation.</p>
+
+<h3>Running all tests in one shot without iterating</h3>
+<p>Newly created tests frequently fail on the first run due to mock misconfiguration, wrong assertions, or compilation errors. The fix loop (run, analyze failures, fix, re-run, up to 5 iterations) is essential. Without it, you'd hand the user a pile of broken tests.</p>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="token-efficiency">Token Efficiency: What Actually Matters</h2>
+
+<p>Agent orchestration is expensive in tokens. Every agent spawn is a fresh context. Every tool call costs tokens. Every report file that gets read costs tokens. Here's what we've learned about managing costs:</p>
+
+<table>
+  <thead><tr><th>Strategy</th><th>Impact</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Scope-based branching</strong></td>
+      <td>High</td>
+      <td>Backend-only tickets skip UI Designer + Frontend Dev + Paper MCP — saves ~40% of tokens</td>
+    </tr>
+    <tr>
+      <td><strong>Parallel execution</strong></td>
+      <td>Medium (time)</td>
+      <td>Security + Quality scans run simultaneously — wall clock time cut in half, same token cost</td>
+    </tr>
+    <tr>
+      <td><strong>Targeted code review</strong></td>
+      <td>High</td>
+      <td>Code Analyst reviews only the git diff, not the entire codebase — 10x fewer tokens than a full scan</td>
+    </tr>
+    <tr>
+      <td><strong>Stack detection</strong></td>
+      <td>Medium</td>
+      <td>Detecting "Java + Maven" means the agent prompt includes JUnit patterns, not Jest. No wasted exploration.</td>
+    </tr>
+    <tr>
+      <td><strong>Fix loop cap</strong></td>
+      <td>Safety</td>
+      <td>Unit test fix loop caps at 5 iterations. Prevents infinite token burn on unfixable tests.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="lessons">Lessons Learned</h2>
+
+<h3>1. The prompt IS the product</h3>
+<p>In a traditional software project, you write code and the code runs. In this system, you write prompts and the prompts run. The quality of the output is directly proportional to the quality of the prompt. A vague prompt produces vague results. A prompt that specifies exact file paths, exact output formats, and exact decision criteria produces reliable, reproducible results. We treat our <code>.claude/commands/</code> Markdown files with the same rigor as production code.</p>
+
+<h3>2. Agents need more structure than humans</h3>
+<p>A human developer can be told "fix the bug" and figure out the rest. An agent needs: which project directory, what language, what test framework, what files to read first, what patterns to follow, where to write the output, and what to do when it encounters an edge case. The more structure you provide, the better the output.</p>
+
+<h3>3. File-based communication is surprisingly robust</h3>
+<p>We initially worried about agents writing to the wrong files, overwriting each other's output, or producing incompatible formats. In practice, this almost never happens. Agents are good at following naming conventions when you tell them explicitly what to write and where.</p>
+
+<h3>4. User gates save more time than they cost</h3>
+<p>Every user approval point adds 30-60 seconds of human time. But each gate prevents 5-15 minutes of wasted agent work when the plan or design is wrong. The math is clear: always gate before expensive operations.</p>
+
+<h3>5. The iterative loop is the most powerful pattern</h3>
+<p>Single-pass pipelines (scan once, fix once, done) miss things. The loop pattern (scan, fix, re-scan, repeat until clean) catches issues introduced by fixes, previously masked issues, and interaction effects between changes. It consistently produces cleaner output than single-pass.</p>
+
+<h3>6. JAM MCP integration changed bug analysis</h3>
+<p>Before JAM integration, bug tickets had text descriptions and maybe a screenshot. With JAM MCP, the agent can analyze the actual video recording: see what the user clicked, read the console errors, check the network requests. It turns a vague bug report into a structured, actionable analysis. The auto-detection of JAM links in Jira tickets means this happens automatically — no extra steps.</p>
+
+<!-- ══════════════════════════════════════ -->
+<h2 id="whats-next">What's Next</h2>
+
+<table>
+  <thead><tr><th>Priority</th><th>Feature</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="lozenge loz-red">High</span></td>
+      <td><code>/pr</code> — Smart PR Creator</td>
+      <td>Closes the loop: Jira ticket &rarr; implement &rarr; PR &rarr; Jira update. Currently the pipeline stops before creating a PR. This is the missing piece.</td>
+    </tr>
+    <tr>
+      <td><span class="lozenge loz-orange">Medium</span></td>
+      <td>Git integration in <code>/jira</code></td>
+      <td>Auto-create feature branches per ticket, auto-commit with ticket reference, link PRs to Jira.</td>
+    </tr>
+    <tr>
+      <td><span class="lozenge loz-orange">Medium</span></td>
+      <td>Slack notifications</td>
+      <td>Post to a team channel when a ticket is resolved, with a link to the report and key stats.</td>
+    </tr>
+    <tr>
+      <td><span class="lozenge loz-blue">Low</span></td>
+      <td>CI/CD integration</td>
+      <td>Trigger builds after implementation, verify deployment, link build status to Jira.</td>
+    </tr>
+    <tr>
+      <td><span class="lozenge loz-blue">Low</span></td>
+      <td>Sprint retrospective (<code>/retro</code>)</td>
+      <td>Analyze completed sprint: tickets resolved, time logged, code quality metrics, churn areas. Auto-generate a retro report.</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>Full Command Reference</h2>
+
+<table>
+  <thead><tr><th>Command</th><th>Category</th><th>Agents</th><th>Output</th></tr></thead>
+  <tbody>
+    <tr><td><code>/jira {key}</code></td><td>Project Mgmt</td><td>Up to 6</td><td>reports/jira-{KEY}-report.html</td></tr>
+    <tr><td><code>/jira sprint</code></td><td>Project Mgmt</td><td>Up to 6/ticket</td><td>Sequential processing</td></tr>
+    <tr><td><code>/jira teams</code></td><td>Project Mgmt</td><td>0</td><td>Team list (terminal)</td></tr>
+    <tr><td><code>/jam {url}</code></td><td>Bug Analysis</td><td>0 (MCP)</td><td>JAM analysis (terminal)</td></tr>
+    <tr><td><code>/tempo</code></td><td>Time Tracking</td><td>0</td><td>Jira worklog</td></tr>
+    <tr><td><code>/new-feature</code></td><td>Feature Dev</td><td>4-5</td><td>reports/feature-report.html</td></tr>
+    <tr><td><code>/dev-team</code></td><td>Code Quality</td><td>5 (iterative)</td><td>reports/master-report.html</td></tr>
+    <tr><td><code>/full-pipeline</code></td><td>End-to-End</td><td>9+</td><td>reports/master-report.html + Docker</td></tr>
+    <tr><td><code>/unit-test</code></td><td>Testing</td><td>1-3</td><td>reports/unit-test-report.html</td></tr>
+    <tr><td><code>/playwright-test</code></td><td>Testing</td><td>1</td><td>reports/playwright-report/</td></tr>
+    <tr><td><code>/deps</code></td><td>Security</td><td>1-2</td><td>reports/deps-audit-report.html</td></tr>
+    <tr><td><code>/security-audit</code></td><td>Security</td><td>1</td><td>reports/security-audit.md</td></tr>
+    <tr><td><code>/quality-audit</code></td><td>Quality</td><td>1</td><td>reports/quality-audit.md</td></tr>
+    <tr><td><code>/fix-all</code></td><td>Implementation</td><td>1</td><td>reports/fixes-applied.md</td></tr>
+    <tr><td><code>/test-all</code></td><td>Testing</td><td>1</td><td>reports/test-report.md</td></tr>
+    <tr><td><code>/code-analysis</code></td><td>Review</td><td>1</td><td>reports/code-analysis.md</td></tr>
+    <tr><td><code>/master-report</code></td><td>Documentation</td><td>1</td><td>reports/master-report.html</td></tr>
+    <tr><td><code>/docker-build</code></td><td>DevOps</td><td>1</td><td>reports/docker-build-report.md</td></tr>
+    <tr><td><code>/docker-deploy</code></td><td>DevOps</td><td>1</td><td>reports/docker-deploy-report.md</td></tr>
+    <tr><td><code>/docker-test</code></td><td>DevOps</td><td>1</td><td>reports/docker-integration-test-report.md</td></tr>
+    <tr><td><code>/docker-teardown</code></td><td>DevOps</td><td>1</td><td>reports/docker-teardown-report.md</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<div class="panel panel-success">
+  <h4>Reproducing this setup</h4>
+  <p>Everything described in this document runs on <strong>Claude Code (Opus 4.6)</strong> with no custom infrastructure. The entire system is 21 Markdown files in <code>.claude/commands/</code>, an <code>.env</code> file with Jira credentials, and two MCP server connections (JAM + Paper). There is no server, no database, no deployment pipeline. If you have Claude Code, you can copy the Markdown files and have the same team.</p>
+</div>
+
+</div><!-- end .page-container -->
+</body>
+</html>

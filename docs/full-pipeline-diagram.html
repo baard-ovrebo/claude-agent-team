@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full Pipeline — Flow Diagram</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card-hover: #263548;
+    --accent: #6366f1;
+    --accent-l: #818cf8;
+    --green: #22c55e;
+    --green-dim: #166534;
+    --red: #ef4444;
+    --red-dim: #991b1b;
+    --orange: #f59e0b;
+    --orange-dim: #92400e;
+    --cyan: #06b6d4;
+    --cyan-dim: #155e75;
+    --purple: #a78bfa;
+    --text: #e2e8f0;
+    --dim: #94a3b8;
+    --dimmer: #64748b;
+    --border: #334155;
+    --line: #475569;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    padding: 48px 24px 32px;
+    background: linear-gradient(180deg, #1e1b4b 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent-l), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header p {
+    color: var(--dim);
+    margin-top: 8px;
+    font-size: 0.95rem;
+  }
+  .header .legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .header .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--dim);
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  /* ── Main flow container ── */
+  .flow-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+  }
+
+  /* ── Phase header ── */
+  .phase {
+    margin-bottom: 48px;
+    position: relative;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .phase-num {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .phase-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .phase-sub {
+    font-size: 0.85rem;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+
+  /* ── Flow rows ── */
+  .flow-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    margin-bottom: 0;
+    position: relative;
+  }
+
+  /* ── Vertical spine ── */
+  .spine {
+    width: 48px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  .spine-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    background: var(--bg);
+    z-index: 2;
+    flex-shrink: 0;
+    margin-top: 18px;
+  }
+  .spine-line {
+    width: 2px;
+    flex: 1;
+    background: var(--border);
+    min-height: 24px;
+  }
+  .spine-dot.green { border-color: var(--green); }
+  .spine-dot.red { border-color: var(--red); }
+  .spine-dot.orange { border-color: var(--orange); }
+  .spine-dot.cyan { border-color: var(--cyan); }
+  .spine-dot.purple { border-color: var(--purple); }
+
+  /* ── Node cards ── */
+  .node {
+    flex: 1;
+    margin: 8px 0;
+    position: relative;
+  }
+  .node-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .node-card:hover {
+    border-color: var(--accent);
+  }
+  .node-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .node-card p {
+    font-size: 0.82rem;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+  .node-card .cmd {
+    display: inline-block;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-l);
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+  .node-card .output {
+    display: inline-block;
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--green);
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+    margin-left: 4px;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge-red { background: var(--red-dim); color: var(--red); }
+  .badge-green { background: var(--green-dim); color: var(--green); }
+  .badge-orange { background: var(--orange-dim); color: var(--orange); }
+  .badge-cyan { background: var(--cyan-dim); color: var(--cyan); }
+  .badge-purple { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
+  .badge-accent { background: rgba(99, 102, 241, 0.15); color: var(--accent-l); }
+
+  /* ── Parallel split ── */
+  .parallel-group {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    margin: 8px 0;
+  }
+  .parallel-group .node {
+    margin: 0;
+  }
+  .parallel-label {
+    position: absolute;
+    left: -56px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    font-size: 0.65rem;
+    color: var(--dimmer);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  /* ── Decision diamond ── */
+  .decision {
+    flex: 1;
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .diamond {
+    width: 140px;
+    height: 80px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .diamond::before {
+    content: '';
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background: var(--card);
+    border: 2px solid var(--orange);
+    transform: rotate(45deg);
+    border-radius: 6px;
+  }
+  .diamond span {
+    position: relative;
+    z-index: 1;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--orange);
+  }
+  .decision-branches {
+    display: flex;
+    gap: 48px;
+    margin-top: 12px;
+  }
+  .decision-branch {
+    text-align: center;
+  }
+  .decision-branch .label {
+    font-size: 0.72rem;
+    color: var(--dimmer);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .decision-branch .action {
+    font-size: 0.82rem;
+    color: var(--dim);
+    padding: 6px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .decision-branch .action.green { border-color: var(--green); color: var(--green); }
+  .decision-branch .action.red { border-color: var(--red); color: var(--red); }
+
+  /* ── Loop indicator ── */
+  .loop-indicator {
+    position: absolute;
+    right: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--orange);
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .loop-arrow {
+    font-size: 1.2rem;
+  }
+
+  /* ── Connector arrows ── */
+  .connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0;
+    color: var(--dimmer);
+    font-size: 0.72rem;
+    gap: 6px;
+  }
+  .connector .arrow {
+    font-size: 1rem;
+    color: var(--line);
+  }
+  .connector .gate {
+    font-size: 0.7rem;
+    color: var(--dimmer);
+    font-style: italic;
+  }
+
+  /* ── Phase gate ── */
+  .phase-gate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 24px 0;
+    gap: 12px;
+  }
+  .phase-gate-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+  .phase-gate-label {
+    font-size: 0.72rem;
+    color: var(--dimmer);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    padding: 4px 16px;
+    border: 1px dashed var(--border);
+    border-radius: 20px;
+  }
+
+  /* ── Final result ── */
+  .result-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(34, 197, 94, 0.1));
+    border: 2px solid var(--accent);
+    border-radius: 14px;
+    padding: 24px 28px;
+    text-align: center;
+    margin-top: 16px;
+  }
+  .result-card h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--accent-l);
+    margin-bottom: 12px;
+  }
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .result-item {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .result-item .val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent-l), var(--green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .result-item .lbl {
+    font-size: 0.72rem;
+    color: var(--dimmer);
+    margin-top: 2px;
+  }
+
+  /* ── Step number ── */
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  /* ── Agent list ── */
+  .agents {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .agent-tag {
+    font-size: 0.68rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--accent-l);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .parallel-group { flex-direction: column; }
+    .result-grid { grid-template-columns: 1fr 1fr; }
+    .header h1 { font-size: 1.5rem; }
+    .loop-indicator { display: none; }
+  }
+
+  @media print {
+    body { background: #fff; color: #1e293b; }
+    .node-card { border-color: #d1d5db; background: #f9fafb; }
+    .header { background: none; border-bottom: 2px solid #e5e7eb; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<div class="header">
+  <h1>/full-pipeline</h1>
+  <p>End-to-end software delivery: scan, fix, test, containerize, deploy, verify, report</p>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div> Security</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--orange);"></div> Quality</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> Fix &amp; Test</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cyan);"></div> Docker</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--purple);"></div> Report</div>
+  </div>
+</div>
+
+<div class="flow-container">
+
+<!-- ═════════════════════════════════════ -->
+<!--  PHASE 1: CODE QUALITY LOOP         -->
+<!-- ═════════════════════════════════════ -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num" style="background:rgba(239,68,68,0.12); color:var(--red);">1</div>
+    <div>
+      <div class="phase-title">Code Quality Loop</div>
+      <div class="phase-sub">Iterative scan &rarr; fix &rarr; test &rarr; verify until zero findings</div>
+    </div>
+  </div>
+
+  <!-- Step 1.1: Parallel Scan -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot red"></div><div class="spine-line"></div></div>
+    <div class="parallel-group">
+      <div class="node">
+        <div class="node-card">
+          <h3><span class="step-num" style="background:var(--red-dim);color:var(--red);">1</span> Security Auditor</h3>
+          <p>OWASP Top 10 scan across all source files. Injection, XSS, broken auth, data exposure, misconfig.</p>
+          <div class="agents">
+            <span class="agent-tag">CRITICAL</span>
+            <span class="agent-tag">WARNING</span>
+            <span class="agent-tag">INFO</span>
+          </div>
+          <div><span class="cmd">/security-audit</span><span class="output">reports/security-audit.md</span></div>
+        </div>
+      </div>
+      <div class="node">
+        <div class="node-card">
+          <h3><span class="step-num" style="background:var(--orange-dim);color:var(--orange);">1</span> Quality Engineer</h3>
+          <p>Code smells, bugs, anti-patterns. Type safety, error handling, performance, dead code, API design.</p>
+          <div class="agents">
+            <span class="agent-tag">CRITICAL</span>
+            <span class="agent-tag">WARNING</span>
+            <span class="agent-tag">INFO</span>
+          </div>
+          <div><span class="cmd">/quality-audit</span><span class="output">reports/quality-audit.md</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span> <span class="gate">parallel &rarr; merge findings</span></div>
+
+  <!-- Step 1.2: Fix -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot green"></div><div class="spine-line"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:var(--green-dim);color:var(--green);">2</span> Backend Developer</h3>
+        <p>Reads both audit reports. Fixes ALL issues by severity: Critical &rarr; Warning &rarr; Info. Applies fixes directly to source code.</p>
+        <div><span class="cmd">/fix-all</span><span class="output">reports/fixes-applied.md</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span></div>
+
+  <!-- Step 1.3: Test -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot green"></div><div class="spine-line"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:var(--green-dim);color:var(--green);">3</span> Test Engineer</h3>
+        <p>Writes unit tests for every fix. Edge cases, security regression tests. Runs ALL tests, iterates until 100% pass.</p>
+        <div><span class="cmd">/test-all</span><span class="output">reports/test-report.md</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span></div>
+
+  <!-- Step 1.4: Regression Check (Decision) -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot orange"></div><div class="spine-line"></div></div>
+    <div class="decision">
+      <div class="diamond"><span>New issues?</span></div>
+      <div class="decision-branches">
+        <div class="decision-branch">
+          <div class="label">Yes</div>
+          <div class="action red">Loop back to Step 1</div>
+        </div>
+        <div class="decision-branch">
+          <div class="label">Zero findings</div>
+          <div class="action green">Proceed to Phase 2</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="phase-gate">
+  <div class="phase-gate-line"></div>
+  <div class="phase-gate-label">Gate: zero findings + all unit tests pass</div>
+  <div class="phase-gate-line"></div>
+</div>
+
+<!-- ═════════════════════════════════════ -->
+<!--  PHASE 2: PLAYWRIGHT E2E             -->
+<!-- ═════════════════════════════════════ -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num" style="background:rgba(6,182,212,0.12); color:var(--cyan);">2</div>
+    <div>
+      <div class="phase-title">Playwright E2E Testing</div>
+      <div class="phase-sub">Browser-based end-to-end tests against the running web app</div>
+    </div>
+  </div>
+
+  <!-- Step 2.1: Run E2E -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot cyan"></div><div class="spine-line"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:var(--cyan-dim);color:var(--cyan);">1</span> Playwright E2E Engineer</h3>
+        <p>Verify Playwright installed. Run full test suite: auth flows, CRUD operations, user management, order lifecycle, security (XSS, auth bypass, data leaks).</p>
+        <div><span class="cmd">/playwright-test</span><span class="output">reports/playwright-report/</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span></div>
+
+  <!-- Step 2.2: Failure triage -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot orange"></div><div class="spine-line"></div></div>
+    <div class="decision">
+      <div class="diamond"><span>Tests pass?</span></div>
+      <div class="decision-branches">
+        <div class="decision-branch">
+          <div class="label">App bug</div>
+          <div class="action red">Fix source, re-run unit + E2E</div>
+        </div>
+        <div class="decision-branch">
+          <div class="label">Test bug</div>
+          <div class="action" style="border-color:var(--orange);color:var(--orange);">Fix test, re-run E2E</div>
+        </div>
+        <div class="decision-branch">
+          <div class="label">All pass</div>
+          <div class="action green">Proceed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span></div>
+
+  <!-- Step 2.3: Coverage check -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot cyan"></div><div class="spine-line"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:var(--cyan-dim);color:var(--cyan);">2</span> Coverage Check</h3>
+        <p>Verify all views tested (login, dashboard). All CRUD covered. Error states tested. Write additional tests for gaps. Re-run and verify.</p>
+        <div><span class="output">reports/playwright-test-report.md</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="phase-gate">
+  <div class="phase-gate-line"></div>
+  <div class="phase-gate-label">Gate: all E2E tests pass + coverage verified</div>
+  <div class="phase-gate-line"></div>
+</div>
+
+<!-- ═════════════════════════════════════ -->
+<!--  PHASE 3: DOCKER PIPELINE            -->
+<!-- ═════════════════════════════════════ -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num" style="background:rgba(6,182,212,0.12); color:var(--cyan);">3</div>
+    <div>
+      <div class="phase-title">Docker Pipeline</div>
+      <div class="phase-sub">Build, deploy, verify, integration test against live container</div>
+    </div>
+  </div>
+
+  <!-- Step 3.1: Build -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot cyan"></div><div class="spine-line"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:var(--cyan-dim);color:var(--cyan);">1</span> Docker Build</h3>
+        <p><code>docker compose build</code> &mdash; validate image size, non-root user, health check, no secrets in layers. Security scan if available.</p>
+        <div><span class="cmd">/docker-build</span><span class="output">reports/docker-build-report.md</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span> <span class="gate">build succeeds (retry on failure)</span></div>
+
+  <!-- Step 3.2: Deploy -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot green"></div><div class="spine-line"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:var(--green-dim);color:var(--green);">2</span> Docker Deploy</h3>
+        <p><code>docker compose up -d</code> &mdash; wait for health check, test key endpoints with curl. Collect container ID, IP, ports, network, resource usage.</p>
+        <div><span class="cmd">/docker-deploy</span><span class="output">reports/docker-deploy-report.md</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span> <span class="gate">container healthy</span></div>
+
+  <!-- Step 3.3: Integration Tests -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot cyan"></div><div class="spine-line"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:var(--cyan-dim);color:var(--cyan);">3</span> Integration Tests</h3>
+        <p>Full test suite against live container: auth flow, CRUD, orders, security, edge cases, container health. Records every request/response.</p>
+        <div><span class="cmd">/docker-test</span><span class="output">reports/docker-integration-test-report.md</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector"><span class="arrow">&darr;</span></div>
+
+  <!-- Step 3.4: Decision -->
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot orange"></div><div class="spine-line"></div></div>
+    <div class="decision">
+      <div class="diamond"><span>Tests pass?</span></div>
+      <div class="decision-branches">
+        <div class="decision-branch">
+          <div class="label">Fail</div>
+          <div class="action red">Fix, rebuild, redeploy, retest</div>
+        </div>
+        <div class="decision-branch">
+          <div class="label">All pass</div>
+          <div class="action green">Proceed (container stays running)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="phase-gate">
+  <div class="phase-gate-line"></div>
+  <div class="phase-gate-label">Gate: all integration tests pass + container healthy</div>
+  <div class="phase-gate-line"></div>
+</div>
+
+<!-- ═════════════════════════════════════ -->
+<!--  PHASE 4: MASTER REPORT              -->
+<!-- ═════════════════════════════════════ -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num" style="background:rgba(167,139,250,0.12); color:var(--purple);">4</div>
+    <div>
+      <div class="phase-title">Master Report</div>
+      <div class="phase-sub">Compile all agent reports into a single HTML document</div>
+    </div>
+  </div>
+
+  <div class="flow-row">
+    <div class="spine"><div class="spine-dot purple"></div><div class="spine-line" style="min-height:8px;"></div></div>
+    <div class="node">
+      <div class="node-card">
+        <h3><span class="step-num" style="background:rgba(167,139,250,0.15);color:var(--purple);">1</span> Documentation Lead</h3>
+        <p>Compiles all reports into a single master HTML report with 8 sections: security audit, code quality, fixes applied, test results, Docker build, deployment info, integration tests, and recommendations.</p>
+        <div><span class="cmd">/master-report</span><span class="output">reports/master-report.html</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════ -->
+<!--  FINAL RESULT                        -->
+<!-- ═════════════════════════════════════ -->
+<div class="result-card">
+  <h3>Pipeline Complete</h3>
+  <p style="color:var(--dim); font-size:0.9rem; margin-bottom:4px;">All phases passed. Container running. Report generated.</p>
+  <div class="result-grid">
+    <div class="result-item">
+      <div class="val">42</div>
+      <div class="lbl">Issues found &amp; fixed</div>
+    </div>
+    <div class="result-item">
+      <div class="val">187</div>
+      <div class="lbl">Unit tests written</div>
+    </div>
+    <div class="result-item">
+      <div class="val">20</div>
+      <div class="lbl">E2E tests passed</div>
+    </div>
+    <div class="result-item">
+      <div class="val">100%</div>
+      <div class="lbl">Integration pass rate</div>
+    </div>
+  </div>
+  <div style="margin-top:20px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+    <span style="background:var(--card);border:1px solid var(--border);padding:6px 14px;border-radius:6px;font-family:monospace;font-size:0.82rem;color:var(--accent-l);">reports/master-report.html</span>
+    <span style="background:var(--card);border:1px solid var(--border);padding:6px 14px;border-radius:6px;font-family:monospace;font-size:0.82rem;color:var(--green);">http://localhost:3000</span>
+    <span style="background:var(--card);border:1px solid var(--border);padding:6px 14px;border-radius:6px;font-family:monospace;font-size:0.82rem;color:var(--dim);">/docker-teardown</span>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════ -->
+<!--  AGENT REFERENCE                     -->
+<!-- ═════════════════════════════════════ -->
+<div style="margin-top:48px;">
+  <h3 style="text-align:center; color:var(--dimmer); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:16px;">Agents &amp; Commands Used</h3>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--red);">
+      <div style="font-size:0.82rem;font-weight:700;">Security Auditor</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/security-audit</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--orange);">
+      <div style="font-size:0.82rem;font-weight:700;">Quality Engineer</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/quality-audit</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--green);">
+      <div style="font-size:0.82rem;font-weight:700;">Backend Developer</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/fix-all</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--green);">
+      <div style="font-size:0.82rem;font-weight:700;">Test Engineer</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/test-all</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--cyan);">
+      <div style="font-size:0.82rem;font-weight:700;">Playwright E2E</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/playwright-test</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--cyan);">
+      <div style="font-size:0.82rem;font-weight:700;">Docker Build</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/docker-build</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--cyan);">
+      <div style="font-size:0.82rem;font-weight:700;">Docker Deploy</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/docker-deploy</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--cyan);">
+      <div style="font-size:0.82rem;font-weight:700;">Docker QA</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/docker-test</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;border-left:3px solid var(--purple);">
+      <div style="font-size:0.82rem;font-weight:700;">Documentation Lead</div>
+      <div style="font-size:0.72rem;color:var(--dimmer);margin-top:2px;font-family:monospace;">/master-report</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end .flow-container -->
+</body>
+</html>

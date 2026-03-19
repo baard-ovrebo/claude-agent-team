@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Skills &mdash; Documentation</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --card-bg: #ffffff;
+    --text: #1c1917;
+    --text-muted: #57534e;
+    --border: #e7e5e4;
+    --accent: #4f46e5;
+    --accent-light: #eef2ff;
+    --green: #16a34a;
+    --green-light: #f0fdf4;
+    --green-border: #bbf7d0;
+    --blue: #2563eb;
+    --blue-light: #eff6ff;
+    --blue-border: #bfdbfe;
+    --orange: #ea580c;
+    --orange-light: #fff7ed;
+    --orange-border: #fed7aa;
+    --purple: #7c3aed;
+    --purple-light: #f5f3ff;
+    --purple-border: #ddd6fe;
+    --red: #dc2626;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+    --radius: 12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: system-ui, 'Segoe UI', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    font-size: 15px;
+  }
+
+  /* ── Sticky Nav ── */
+  .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(250,250,249,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+  }
+  .top-nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    height: 52px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .top-nav-inner::-webkit-scrollbar { display: none; }
+  .nav-logo {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+  }
+  .nav-links { display: flex; gap: 0.25rem; }
+  .nav-links a {
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-links a:hover { background: var(--accent-light); color: var(--accent); }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #fff;
+    padding: 4.5rem 2rem 3.5rem;
+    text-align: center;
+  }
+  .hero h1 { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+  .hero p { font-size: 1.15rem; opacity: 0.88; max-width: 560px; margin: 0 auto; }
+
+  /* ── Container ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+  /* ── Section titles ── */
+  .section-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 3rem 0 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-title .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; position: relative; top: -1px; }
+  .dot-green { background: var(--green); }
+  .dot-blue { background: var(--blue); }
+  .dot-orange { background: var(--orange); }
+  .dot-purple { background: var(--purple); }
+  .dot-accent { background: var(--accent); }
+
+  /* ── Quick Reference ── */
+  .quick-ref { margin-top: 2rem; }
+  .quick-ref h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 1rem; }
+  .qr-group-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    color: #fff;
+  }
+  .qr-green { background: var(--green); }
+  .qr-blue { background: var(--blue); }
+  .qr-orange { background: var(--orange); }
+  .qr-purple { background: var(--purple); }
+  .qr-accent { background: var(--accent); }
+
+  .qr-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    background: var(--card-bg);
+    border-radius: 0 var(--radius) var(--radius) var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .qr-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 14px;
+  }
+  .qr-table tr:last-child td { border-bottom: none; }
+  .qr-table .cmd {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+    width: 160px;
+  }
+
+  /* ── Cards ── */
+  .skill-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.2s;
+  }
+  .skill-card:hover { box-shadow: var(--shadow-md); }
+
+  .skill-card h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .skill-card h3 code {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 1.05rem;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 2px 10px;
+    border-radius: 6px;
+  }
+
+  .skill-card .desc { color: var(--text-muted); margin-bottom: 1rem; }
+
+  .skill-card h4 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 1.25rem 0 0.5rem;
+  }
+
+  .skill-card ul { padding-left: 1.25rem; margin-bottom: 0.5rem; }
+  .skill-card li { margin-bottom: 0.3rem; font-size: 14px; }
+
+  /* Code blocks */
+  .code-block {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 13px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 0.5rem 0 0.75rem;
+    position: relative;
+    line-height: 1.55;
+  }
+  .code-block::after {
+    content: 'command';
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 10px;
+    color: #585b70;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Details / collapsible */
+  details {
+    margin: 0.75rem 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  details summary {
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    background: #f5f5f4;
+    user-select: none;
+    list-style: none;
+  }
+  details summary::before {
+    content: '\25B6';
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 10px;
+    transition: transform 0.2s;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  details .details-body { padding: 14px 16px; font-size: 14px; }
+  details .details-body ol { padding-left: 1.25rem; }
+  details .details-body li { margin-bottom: 0.4rem; }
+
+  /* Prereq badge */
+  .prereq {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+  .prereq-env { background: #fef3c7; color: #92400e; }
+  .prereq-docker { background: #dbeafe; color: #1e40af; }
+  .prereq-paper { background: #f3e8ff; color: #6b21a8; }
+  .prereq-playwright { background: #dcfce7; color: #166534; }
+
+  /* Category accent bar on cards */
+  .card-green { border-left: 4px solid var(--green); }
+  .card-blue { border-left: 4px solid var(--blue); }
+  .card-orange { border-left: 4px solid var(--orange); }
+  .card-purple { border-left: 4px solid var(--purple); }
+  .card-accent { border-left: 4px solid var(--accent); }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 2.5rem 2rem;
+    color: var(--text-muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+  }
+  .footer strong { color: var(--accent); }
+
+  /* ── Print ── */
+  @media print {
+    .top-nav { display: none; }
+    .hero { padding: 2rem; background: #4f46e5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .skill-card { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
+    details { border: 1px solid #ccc; }
+    details[open] summary ~ .details-body { display: block; }
+    .code-block { background: #f1f1f1 !important; color: #222 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-size: 12px; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 2rem; }
+    .hero { padding: 3rem 1.25rem 2.5rem; }
+    .container { padding: 1.5rem 1rem 3rem; }
+    .skill-card { padding: 1.25rem; }
+    .nav-logo { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TOP NAV ═══════════ -->
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <span class="nav-logo">Claude Code Skills</span>
+    <div class="nav-links">
+      <a href="#quick-ref">Quick Reference</a>
+      <a href="#jira-integration">Jira &amp; JAM</a>
+      <a href="#feature-dev">Development</a>
+      <a href="#code-quality">Quality</a>
+      <a href="#docker">Docker</a>
+      <a href="#testing">Testing</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════ HERO ═══════════ -->
+<header class="hero">
+  <h1>Claude Code Skills</h1>
+  <p>Custom slash commands for AI-powered development workflows</p>
+</header>
+
+<div class="container">
+
+<!-- ═══════════ QUICK REFERENCE ═══════════ -->
+<section class="quick-ref" id="quick-ref">
+  <h2>Quick Reference</h2>
+
+  <!-- Jira Integration -->
+  <div class="qr-group-label qr-green">Jira Integration</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/jira</td><td>Full ticket orchestrator &mdash; fetch, analyze, detect JAM recordings, design, implement, and update a Jira ticket end-to-end</td></tr>
+    <tr><td class="cmd">/jira sprint</td><td>Sprint batch mode &mdash; fetches teams dynamically, lets you pick a team, then processes sprint tickets sequentially</td></tr>
+    <tr><td class="cmd">/jira teams</td><td>Lists all available Scrum teams fetched live from Jira &mdash; currently 13 teams in the FO project</td></tr>
+    <tr><td class="cmd">/jam</td><td>Analyzes JAM bug recordings via MCP &mdash; video analysis, console logs, network requests, and user events</td></tr>
+    <tr><td class="cmd">/tempo</td><td>Quick time tracking for Jira tickets &mdash; add or view logged time without leaving the terminal</td></tr>
+  </table>
+
+  <!-- Feature Development -->
+  <div class="qr-group-label qr-blue">Feature Development</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/new-feature</td><td>Six-phase feature pipeline &mdash; plan, screenshot, design in Paper, parallel implementation, report, and optional testing</td></tr>
+    <tr><td class="cmd">/code-analysis</td><td>Analyze only changed/new code for security, logic, quality, and performance issues &mdash; fix critical findings automatically</td></tr>
+  </table>
+
+  <!-- Code Quality -->
+  <div class="qr-group-label qr-accent">Code Quality</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/dev-team</td><td>Full development team loop &mdash; security audit, quality scan, fixes, tests, and regression verification until zero findings</td></tr>
+    <tr><td class="cmd">/security-audit</td><td>OWASP Top 10 security scan of every file &mdash; injection, auth, XSS, access control, misconfig</td></tr>
+    <tr><td class="cmd">/quality-audit</td><td>Code quality scan &mdash; code smells, type safety, performance, error handling, API design</td></tr>
+    <tr><td class="cmd">/fix-all</td><td>Fix all issues from security and quality audits, prioritized by severity</td></tr>
+    <tr><td class="cmd">/test-all</td><td>Write comprehensive unit, security, integration, and regression tests &mdash; run until 100% pass</td></tr>
+    <tr><td class="cmd">/master-report</td><td>Compile all agent reports into a single polished HTML master report</td></tr>
+  </table>
+
+  <!-- Docker & Deployment -->
+  <div class="qr-group-label qr-orange">Docker &amp; Deployment</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/full-pipeline</td><td>End-to-end delivery pipeline &mdash; quality loop, Playwright E2E, Docker build/deploy, integration tests, master report</td></tr>
+    <tr><td class="cmd">/docker-build</td><td>Build, validate, and security-scan Docker images</td></tr>
+    <tr><td class="cmd">/docker-deploy</td><td>Deploy with Docker Compose, verify endpoints, collect access information</td></tr>
+    <tr><td class="cmd">/docker-test</td><td>Run comprehensive integration tests against a live Docker deployment</td></tr>
+    <tr><td class="cmd">/docker-teardown</td><td>Gracefully tear down Docker containers and report freed resources</td></tr>
+  </table>
+
+  <!-- Testing -->
+  <div class="qr-group-label qr-purple">Testing</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/unit-test</td><td>Scan projects for unit test coverage gaps, create missing tests, run and fix until green &mdash; supports full scan, single file, and project name resolution</td></tr>
+    <tr><td class="cmd">/playwright-test</td><td>Run full Playwright E2E browser test suite, analyze failures, write missing tests, generate HTML report</td></tr>
+  </table>
+
+  <!-- Security & Dependencies -->
+  <div class="qr-group-label qr-orange">Security &amp; Dependencies</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/deps</td><td>Scan project dependencies for CVEs, outdated packages, and license risks &mdash; health grade A&ndash;F, auto-fix, and CI config export</td></tr>
+    <tr><td class="cmd">/security-audit</td><td>Full security audit of the codebase</td></tr>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--        JIRA INTEGRATION                    -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="jira-integration"><span class="dot dot-green"></span>Jira Integration</h2>
+
+<!-- /jira -->
+<div class="skill-card card-green">
+  <h3><code>/jira</code> Jira Ticket Orchestrator</h3>
+  <p class="desc">
+    A senior technical lead that takes a Jira ticket from assignment to resolution. It fetches the ticket, downloads and inspects attachments (including images), <strong>automatically detects and analyzes JAM recordings</strong> linked in the ticket via MCP, classifies the work, creates UI designs in Paper when visual changes are needed, coordinates implementation agents, runs a code review on the changes, captures verification screenshots with Playwright, generates an HTML report, uploads everything back to Jira, and optionally logs time.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/jira FO-2872
+/jira sprint
+/jira teams</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-env">.env file (JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN)</span>
+  <span class="prereq prereq-paper">Paper MCP (for UI tickets)</span>
+  <span class="prereq prereq-paper">JAM MCP (for bug recording analysis)</span>
+  <span class="prereq prereq-playwright">Playwright (for verification screenshots)</span>
+
+  <details>
+    <summary>Pipeline Phases (5 phases)</summary>
+    <div class="details-body">
+      <ol>
+        <li><strong>Fetch &amp; Analyze</strong> &mdash; Load credentials, fetch ticket via Jira REST API, download attachments, visually inspect images, <strong>detect and analyze JAM recordings</strong> via MCP (video analysis, console errors, network failures, user events), ask user for project paths (never assumes), present ticket summary, classify the work (Bug Fix / UI Change / Backend / Full-stack / Config), find relevant codebase files, get user approval on the approach.</li>
+        <li><strong>Visual Capture &amp; Design</strong> (mandatory for any UI change) &mdash; Screenshot existing UI with Playwright, create before/after design mockups in Paper with artboards prefixed by the ticket key, user reviews and approves designs.</li>
+        <li><strong>Implementation</strong> &mdash; Decide single or parallel agents based on scope, launch Backend and/or Frontend developer agents with full ticket context and design references, capture Paper design screenshots, run a Code Analyst agent on the diff (fixes CRITICAL issues automatically), take Playwright verification screenshots of the running app.</li>
+        <li><strong>Report &amp; Jira Update</strong> &mdash; Generate a comprehensive HTML report, present results to user, optionally post a comment to Jira, upload report and screenshots as attachments, transition ticket status, log time.</li>
+        <li><strong>Final Summary</strong> &mdash; Present a complete summary of changes, Jira updates, files modified, and report location.</li>
+      </ol>
+    </div>
+  </details>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Full Jira REST API integration (fetch, comment, attach, transition, worklog)</li>
+    <li>Automatic attachment download and visual inspection of images</li>
+    <li><strong>JAM MCP integration</strong> &mdash; auto-detects jam.dev links in ticket descriptions/comments, fetches video analysis, console errors, failed network requests, and user interaction timelines</li>
+    <li><strong>Dynamic team fetching</strong> &mdash; <code>/jira teams</code> lists all Scrum teams; <code>/jira sprint</code> fetches teams live and lets you pick</li>
+    <li><strong>Mandatory user path input</strong> &mdash; always asks for project paths, never assumes the current directory is the codebase</li>
+    <li>Mandatory Paper design phase for any UI change, no matter how small</li>
+    <li>Parallel frontend + backend implementation agents when appropriate</li>
+    <li>Automatic code review of changes with critical-issue auto-fixing</li>
+    <li>Playwright verification screenshots of the live running app</li>
+    <li>HTML report generation with ticket details, changes, and screenshots</li>
+    <li>User-controlled Jira updates (agent updates, manual, or skip)</li>
+    <li>Time logging with smart estimates based on work complexity</li>
+  </ul>
+
+  <h4>Multi-Stack Support</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">The pipeline <strong>always asks the user for project paths</strong> &mdash; it never assumes or auto-detects which codebase a ticket belongs to. The current working directory (AIComp) is the orchestration project, not the ticket's codebase. After the user provides paths, the stack is detected from file indicators (package.json, *.csproj, pom.xml, go.mod, etc.):</p>
+  <div class="code-block">Backend: D:\Kunder\247\Finago\control-backend-api
+Frontend: D:\Kunder\247\Finago\control-frontend
+Database: SQL Server</div>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">Agent prompts are tailored to the detected stack so agents write idiomatic code in the correct language and follow the correct conventions.</p>
+  <ul>
+    <li><strong>Supported stacks:</strong> C#/.NET, Java/Spring, Python/Django/Flask/FastAPI, Go, Rust, C++, PHP/Laravel, Ruby/Rails, Dart/Flutter, Swift, React, Angular, Vue, Next.js, and more</li>
+    <li>Falls back to <code>/project-index</code> skill if auto-detection is unclear</li>
+  </ul>
+
+  <h4>Before/After Visual Comparison</h4>
+  <ul>
+    <li>Playwright takes <strong>BEFORE</strong> screenshots of affected pages before any code changes are made</li>
+    <li>Takes matching <strong>AFTER</strong> screenshots after implementation using the same routes/viewports</li>
+    <li>Generates a side-by-side comparison HTML with red &ldquo;Before&rdquo; and green &ldquo;After&rdquo; labels</li>
+    <li>The comparison HTML and all screenshots are uploaded to the Jira ticket as attachments</li>
+  </ul>
+
+  <h4>Sprint Batch Processing</h4>
+  <div class="code-block">/jira sprint</div>
+  <ul>
+    <li><strong>Dynamically fetches all Scrum teams</strong> from Jira and presents them as selectable options</li>
+    <li>Fetches all tickets in the active sprint for the selected team (assigned to you or unassigned)</li>
+    <li>Presents a prioritized table with type, priority, status, and assignee</li>
+    <li>User selects: <strong>All tickets</strong>, <strong>Specific tickets</strong>, <strong>Only mine</strong>, or <strong>Only unassigned</strong></li>
+    <li>Processes each ticket sequentially through the full 5-phase pipeline</li>
+    <li>Between tickets: continue, skip next, or stop</li>
+    <li>Sprint summary table at the end with tickets processed, changes made, time logged, and reports generated</li>
+  </ul>
+
+  <h4>Team Listing</h4>
+  <div class="code-block">/jira teams</div>
+  <ul>
+    <li>Fetches all distinct Scrum team values from Jira via JQL query</li>
+    <li>Displays a numbered table of all available teams (currently 13 teams in the FO project)</li>
+    <li>Teams include: Annual accounts, BANK, Busy, Control, Kjetil, No Team, PAPI, Payday, PublicAPI, Reports and navigation, Rocket, Spirit, Test Automation</li>
+  </ul>
+
+  <h4>JAM Recording Detection</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">When processing a ticket, the pipeline automatically scans the description and comments for <code>jam.dev</code> links. When found, it uses the JAM MCP tools in parallel:</p>
+  <ul>
+    <li><code>mcp__Jam__getDetails</code> &mdash; reporter, duration, browser, OS info</li>
+    <li><code>mcp__Jam__analyzeVideo</code> &mdash; AI-extracted user intents, steps, and visual changes</li>
+    <li><code>mcp__Jam__getConsoleLogs</code> &mdash; filtered for errors</li>
+    <li><code>mcp__Jam__getNetworkRequests</code> &mdash; filtered for 4xx/5xx failures</li>
+    <li><code>mcp__Jam__getUserEvents</code> &mdash; click targets, navigation events, keyboard input</li>
+    <li>Falls back to WebFetch if MCP tools are unavailable</li>
+  </ul>
+</div>
+
+<!-- /tempo -->
+<div class="skill-card card-green">
+  <h3><code>/tempo</code> Jira Time Tracking</h3>
+  <p class="desc">
+    A quick utility for logging and viewing time on Jira tickets without opening a browser. Supports both clock-time ranges (14:00&ndash;16:00) and duration shorthand (2h, 45m). Handles timezone offset detection automatically.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/tempo addTime FO-2872 14:00 16:00 "Implemented invoice reference fix"
+/tempo addTime FO-2872 2h "Quick bug fix"
+/tempo addTime FO-2872 45m "Standup and planning"
+/tempo getTime FO-2872</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-env">.env file (JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN)</span>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Two actions: <code>addTime</code> (log a worklog) and <code>getTime</code> (view all logged time)</li>
+    <li>Accepts clock-time ranges (HH:MM&ndash;HH:MM) or duration shorthand (2h, 45m, 1h30m)</li>
+    <li>Auto-detects timezone offset (Europe/Berlin, DST-aware)</li>
+    <li>Formatted output table with date, day, start/end, duration, author, and description</li>
+    <li>Displays totals, original estimate, and remaining estimate</li>
+  </ul>
+</div>
+
+<!-- /jam -->
+<div class="skill-card card-green">
+  <h3><code>/jam</code> JAM Session Analyzer</h3>
+  <p class="desc">
+    Analyzes JAM (jam.dev) bug recordings to understand bugs, issues, and feature requests captured in video sessions. Connects to the JAM MCP server to fetch full recording data including AI video analysis, console logs, network requests, and user interaction timelines.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/jam https://jam.dev/c/4828d597-d49b-4fa8-99b8-f696321af056
+/jam abc123
+/jam FO-2847</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-paper">JAM MCP server</span>
+  <span class="prereq prereq-env">.env file (for Jira ticket lookup mode)</span>
+
+  <h4>Input Modes</h4>
+  <ul>
+    <li><strong>Full JAM URL</strong> &mdash; <code>https://jam.dev/c/abc123</code> &mdash; analyzes the recording directly</li>
+    <li><strong>JAM ID</strong> &mdash; <code>abc123</code> &mdash; constructs the full URL and analyzes</li>
+    <li><strong>Jira ticket key</strong> &mdash; <code>FO-2847</code> &mdash; fetches the Jira ticket, scans description/comments for jam.dev links, then analyzes each one</li>
+  </ul>
+
+  <h4>Analysis Output</h4>
+  <ul>
+    <li><strong>Bug/Issue Summary</strong> &mdash; one-paragraph description of what was recorded</li>
+    <li><strong>Steps to Reproduce</strong> &mdash; extracted from video analysis and user events</li>
+    <li><strong>Expected vs Actual Behavior</strong></li>
+    <li><strong>Error Details</strong> &mdash; console errors and failed network requests</li>
+    <li><strong>Environment</strong> &mdash; browser, OS, screen dimensions, page URL</li>
+    <li><strong>Affected Components</strong> &mdash; UI components and file paths if identifiable</li>
+    <li><strong>Suggested Fix</strong> &mdash; technical suggestion based on the analysis</li>
+  </ul>
+
+  <h4>Follow-up Actions</h4>
+  <ul>
+    <li><strong>Create Jira ticket</strong> &mdash; creates a new ticket with the analysis pre-filled</li>
+    <li><strong>Link to existing ticket</strong> &mdash; posts analysis as a Jira comment</li>
+    <li><strong>Fix it now</strong> &mdash; runs the full <code>/jira</code> pipeline with the analysis as context</li>
+    <li><strong>Just the analysis</strong> &mdash; done, no further action</li>
+  </ul>
+
+  <h4>MCP Tools Used</h4>
+  <ul>
+    <li><code>mcp__Jam__getDetails</code> &mdash; metadata, reporter, duration, browser/OS, system info</li>
+    <li><code>mcp__Jam__analyzeVideo</code> &mdash; AI-extracted user intents, key actions, visual changes, findings</li>
+    <li><code>mcp__Jam__getConsoleLogs</code> &mdash; JavaScript errors, warnings, stack traces</li>
+    <li><code>mcp__Jam__getNetworkRequests</code> &mdash; HTTP requests with status codes, headers, payloads, timing</li>
+    <li><code>mcp__Jam__getUserEvents</code> &mdash; clicks, keyboard input, navigation, scroll actions</li>
+    <li><code>mcp__Jam__getMetadata</code> &mdash; custom metadata set via jam.metadata() SDK</li>
+    <li><code>mcp__Jam__getScreenshots</code> &mdash; visual screenshots from screenshot-type JAMs</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--        FEATURE DEVELOPMENT                 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="feature-dev"><span class="dot dot-blue"></span>Feature Development</h2>
+
+<!-- /new-feature -->
+<div class="skill-card card-blue">
+  <h3><code>/new-feature</code> Feature Development Pipeline</h3>
+  <p class="desc">
+    A senior product manager and architect that guides a feature from idea to implementation. It plans the feature, captures the current app state, creates visual designs in Paper for user approval, launches parallel frontend and backend implementation agents, runs a code analysis pass, and produces a polished master HTML report.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/new-feature Add a user profile page with avatar upload and bio editing</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-paper">Paper MCP (for UI design)</span>
+  <span class="prereq prereq-playwright">Playwright (for screenshots)</span>
+
+  <details>
+    <summary>Pipeline Phases (6 phases)</summary>
+    <div class="details-body">
+      <ol>
+        <li><strong>Feature Planning</strong> &mdash; Analyze the codebase, draft a structured plan (scope, backend changes, API contract, UI changes, dependencies, risks), get user approval, save the plan.</li>
+        <li><strong>Visual Capture</strong> (for UI/Full-stack) &mdash; Check if the app is running, capture Playwright screenshots of relevant existing pages for the designer's reference.</li>
+        <li><strong>UI Design in Paper</strong> (for UI/Full-stack) &mdash; Launch a UI Designer agent that creates artboards in Paper matching the app's design language, documents component hierarchy, interaction flows, and CSS approach. User must review and approve before continuing.</li>
+        <li><strong>Parallel Implementation</strong> &mdash; Launch Frontend Developer and/or Backend Developer agents in parallel based on scope. Each follows the approved plan and API contract exactly.</li>
+        <li><strong>Code Change Analysis</strong> &mdash; Run a Code Analyst agent on the diff to catch security issues, logic errors, and quality problems. Fix critical issues automatically.</li>
+        <li><strong>Master Feature Report</strong> &mdash; A Documentation Lead agent compiles all reports into a single HTML report with dashboard, plan, design, implementation details, integration map, and testing checklist.</li>
+      </ol>
+    </div>
+  </details>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Structured feature planning with API contract specification</li>
+    <li>Mandatory visual design review before any UI implementation</li>
+    <li>Paper MCP integration for interactive design mockups (with text fallback)</li>
+    <li>Parallel frontend + backend agents for full-stack features</li>
+    <li>Automatic code analysis pass after implementation</li>
+    <li>Professional HTML report with dashboard, code snippets, and testing checklist</li>
+    <li>Optional handoff to <code>/full-pipeline</code> for comprehensive testing</li>
+  </ul>
+
+  <h4>Multi-Stack Support</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">Step 1.0 now detects the project stack and asks for paths before anything else. Auto-detects from file indicators (package.json, *.csproj, pom.xml, go.mod, etc.), always asks user for project paths (supports multi-project setups), and builds a stack profile passed to all agents. Supported stacks: C#/.NET, Java/Spring, Python/Django/Flask/FastAPI, Go, Rust, C++, PHP/Laravel, Ruby/Rails, Dart/Flutter, Swift, React, Angular, Vue, Next.js, and more. Falls back to <code>/project-index</code> if auto-detection is unclear.</p>
+</div>
+
+<!-- /code-analysis -->
+<div class="skill-card card-blue">
+  <h3><code>/code-analysis</code> Code Change Analysis</h3>
+  <p class="desc">
+    A senior code reviewer that analyzes only the files changed during the current session (not the entire codebase). It reviews every changed line for security vulnerabilities, logic errors, code quality issues, and performance problems, then automatically fixes critical findings.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/code-analysis
+/code-analysis FO-2872 invoice fix changes</div>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Scoped to changed code only &mdash; uses <code>git diff</code> and <code>git ls-files --others</code></li>
+    <li>Security checks: SQL injection, XSS, command injection, hardcoded secrets, path traversal, CORS</li>
+    <li>Logic checks: off-by-one, null references, race conditions, incorrect conditionals</li>
+    <li>Quality checks: unused imports, dead code, missing error handling, inconsistent naming</li>
+    <li>Performance checks: N+1 queries, missing indexes, memory leaks, unnecessary re-renders</li>
+    <li>CRITICAL issues are fixed automatically; WARNING issues fixed if straightforward</li>
+    <li>Produces a structured report at <code>reports/code-analysis.md</code></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--        CODE QUALITY                        -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="code-quality"><span class="dot dot-accent"></span>Code Quality</h2>
+
+<!-- /dev-team -->
+<div class="skill-card card-accent">
+  <h3><code>/dev-team</code> Full Development Team</h3>
+  <p class="desc">
+    Orchestrates a complete development team of five specialized agents in an iterative loop. Security Auditor and Code Quality Engineer scan in parallel, a Backend Developer fixes all findings, a Test Engineer writes and runs tests, then the auditors re-scan. This loop continues until a verification round produces zero new findings, then a master HTML report is generated.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/dev-team</div>
+
+  <details>
+    <summary>Pipeline Workflow</summary>
+    <div class="details-body">
+      <ol>
+        <li><strong>Round 1 &mdash; Parallel Scan:</strong> Security Auditor + Code Quality Engineer scan every file in parallel. Findings categorized as CRITICAL / WARNING / INFO.</li>
+        <li><strong>Fix:</strong> Backend Developer agent receives all findings and fixes every issue (CRITICAL first, then WARNING, then INFO).</li>
+        <li><strong>Test:</strong> Test Engineer writes tests for every fix plus edge cases, runs all tests, iterates until 100% pass.</li>
+        <li><strong>Verify:</strong> If test failures remain, the Backend Developer fixes them and tests re-run.</li>
+        <li><strong>Round 2..N &mdash; Regression Check:</strong> Auditors re-scan modified code. If new issues are found, the fix-test-verify cycle repeats. Loop continues until zero new findings.</li>
+        <li><strong>Master Report:</strong> Documentation Writer compiles all rounds into a professional HTML report with executive summary, per-round breakdown, before/after snippets, test coverage, and production-readiness assessment.</li>
+      </ol>
+    </div>
+  </details>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Five specialized agents: Security Auditor, Code Quality Engineer, Backend Developer, Test Engineer, Documentation Writer</li>
+    <li>Iterative loop &mdash; never stops until zero findings in a verification round</li>
+    <li>Parallel scanning for speed (Security + Quality run simultaneously)</li>
+    <li>Comprehensive test coverage with security regression tests</li>
+    <li>Professional master HTML report at <code>reports/master-report.html</code></li>
+  </ul>
+</div>
+
+<!-- /security-audit -->
+<div class="skill-card card-accent">
+  <h3><code>/security-audit</code> Security Auditor</h3>
+  <p class="desc">
+    A senior security auditor that performs a thorough OWASP Top 10 review of every file in the codebase. Checks for injection, broken authentication, sensitive data exposure, XSS, broken access control, security misconfiguration, and more.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/security-audit</div>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>OWASP Top 10 coverage: Injection (A03), Broken Auth (A07), Sensitive Data (A02), XSS (A03), Access Control (A01), Misconfig (A05)</li>
+    <li>Additional checks: prototype pollution, ReDoS, path traversal, race conditions, insecure dependencies</li>
+    <li>Structured output with severity, file path, line number, impact, and recommended fix</li>
+    <li>Summary counts by severity level</li>
+    <li>Report written to <code>reports/security-audit.md</code></li>
+  </ul>
+</div>
+
+<!-- /quality-audit -->
+<div class="skill-card card-accent">
+  <h3><code>/quality-audit</code> Code Quality Engineer</h3>
+  <p class="desc">
+    A senior code quality engineer that scans every file for code smells, anti-patterns, performance issues, type safety bugs, error handling gaps, inconsistent API design, and maintainability concerns.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/quality-audit</div>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Code smells: dead code, duplication, long functions, deep nesting, magic numbers, callback hell</li>
+    <li>Type safety: loose equality, missing null checks, type coercion bugs, floating point issues</li>
+    <li>Performance: N+1 queries, redundant computations, missing caching, memory leaks</li>
+    <li>Error handling: missing try/catch, swallowed errors, unchecked array/object access</li>
+    <li>API design: inconsistent response formats, missing status codes, no pagination</li>
+    <li>Report written to <code>reports/quality-audit.md</code></li>
+  </ul>
+</div>
+
+<!-- /fix-all -->
+<div class="skill-card card-accent">
+  <h3><code>/fix-all</code> Backend Developer (Fixer)</h3>
+  <p class="desc">
+    A senior backend developer that reads all findings from the security and quality audit reports and fixes every issue, prioritized by severity: CRITICAL first (security vulnerabilities, data-loss bugs), then WARNING (correctness, quality), then INFO (improvements, best practices).
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/fix-all</div>
+
+  <h4>Prerequisites</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">Requires <code>reports/security-audit.md</code> and/or <code>reports/quality-audit.md</code> from prior audit runs.</p>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Security fixes: parameterized queries, input sanitization, secrets to env vars, security headers</li>
+    <li>Quality fixes: strict equality, dead code removal, null checks, proper error responses</li>
+    <li>Minimal, focused changes &mdash; fixes the issue without refactoring surrounding code</li>
+    <li>Preserves existing API contract (same endpoints, same request/response shapes)</li>
+    <li>Summary report at <code>reports/fixes-applied.md</code></li>
+  </ul>
+</div>
+
+<!-- /test-all -->
+<div class="skill-card card-accent">
+  <h3><code>/test-all</code> Test Engineer</h3>
+  <p class="desc">
+    A senior test engineer that ensures comprehensive test coverage for the entire codebase. Writes unit tests, security regression tests, integration tests, and edge-case tests, then runs them iteratively until all pass.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/test-all</div>
+
+  <h4>Prerequisites</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">Requires <code>reports/fixes-applied.md</code> from a prior fix run.</p>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Unit tests: every public method, edge cases (null, empty, negative, zero), boundary conditions</li>
+    <li>Security tests: SQL injection payloads, XSS payloads, command injection, sensitive data leaks</li>
+    <li>Integration tests: happy path, 404, 400, consistent response format for each endpoint</li>
+    <li>Regression tests: every previously broken scenario, cross-impact verification</li>
+    <li>Iterative &mdash; re-runs until all tests pass, distinguishes test bugs from code bugs</li>
+    <li>Report at <code>reports/test-report.md</code></li>
+  </ul>
+</div>
+
+<!-- /master-report -->
+<div class="skill-card card-accent">
+  <h3><code>/master-report</code> Master Report Generator</h3>
+  <p class="desc">
+    A documentation lead that compiles all individual agent reports (security audit, quality audit, fixes, tests) into a single, polished master HTML report with a dark theme, severity badges, collapsible sections, and print-friendly styling.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/master-report</div>
+
+  <h4>Prerequisites</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">Requires reports from prior audit/fix/test runs in the <code>reports/</code> directory.</p>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Executive summary with dashboard (issue counts, tests, rounds, files modified)</li>
+    <li>Security audit results with OWASP mapping and before/after code snippets</li>
+    <li>Code quality results with improvement patterns</li>
+    <li>Chronological fixes grouped by file with rationale</li>
+    <li>Test results with pass/fail table and coverage analysis</li>
+    <li>Professional dark-themed HTML at <code>reports/master-report.html</code></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--        DOCKER & DEPLOYMENT                 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="docker"><span class="dot dot-orange"></span>Docker &amp; Deployment</h2>
+
+<!-- /full-pipeline -->
+<div class="skill-card card-orange">
+  <h3><code>/full-pipeline</code> Full Pipeline Orchestrator</h3>
+  <p class="desc">
+    The ultimate delivery pipeline that coordinates the entire software delivery process: an iterative code quality loop (scan, fix, test, repeat), Playwright E2E browser testing, Docker build and deployment, live integration testing against the container, and a comprehensive master report.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/full-pipeline</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-docker">Docker</span>
+  <span class="prereq prereq-playwright">Playwright</span>
+
+  <details>
+    <summary>Pipeline Phases (4 phases)</summary>
+    <div class="details-body">
+      <ol>
+        <li><strong>Phase 1 &mdash; Code Quality Loop:</strong> Parallel security audit + quality scan, Backend Developer fixes all issues, Test Engineer writes and runs tests, regression check. Loop until zero new findings.</li>
+        <li><strong>Phase 2 &mdash; Playwright E2E Testing:</strong> Run the full Playwright suite against the web UI, fix any failures (app bugs or test bugs), check coverage gaps, write additional tests.</li>
+        <li><strong>Phase 3 &mdash; Docker Pipeline:</strong> Build image (validate size, security scan, non-root user), deploy with Docker Compose (health check, endpoint verification), run integration tests against the live container (auth, CRUD, orders, security, edge cases).</li>
+        <li><strong>Phase 4 &mdash; Master Report:</strong> Compile all reports into a single HTML report with executive summary, security findings, quality improvements, test results, Docker build/deploy info, integration test matrix, and recommendations.</li>
+      </ol>
+    </div>
+  </details>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Four-phase pipeline: quality loop, E2E testing, Docker, and reporting</li>
+    <li>Iterative quality loop &mdash; never proceeds until zero findings</li>
+    <li>Playwright E2E with coverage gap detection</li>
+    <li>Docker image validation (size, security scan, non-root, health check)</li>
+    <li>Live integration tests against deployed container</li>
+    <li>Comprehensive master HTML report at <code>reports/master-report.html</code></li>
+    <li>Teardown via <code>/docker-teardown</code></li>
+  </ul>
+</div>
+
+<!-- /docker-build -->
+<div class="skill-card card-orange">
+  <h3><code>/docker-build</code> Docker Build</h3>
+  <p class="desc">
+    A Docker build engineer that builds the Docker image, validates it (size, non-root user, health check, no secrets in layers), runs a security scan for CVEs, and checks optimization opportunities (multi-stage builds, layer ordering, slim base).
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/docker-build</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-docker">Docker</span>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Builds with <code>docker compose build</code> and reports build time, image size, layer count</li>
+    <li>Validates: image size (&lt;200MB), non-root user, HEALTHCHECK, no secrets in layers</li>
+    <li>Security scan via <code>docker scout cve</code> if available</li>
+    <li>Optimization checks: multi-stage build, layer ordering, production dependencies only</li>
+    <li>Report at <code>reports/docker-build-report.md</code></li>
+  </ul>
+</div>
+
+<!-- /docker-deploy -->
+<div class="skill-card card-orange">
+  <h3><code>/docker-deploy</code> Docker Deploy</h3>
+  <p class="desc">
+    A deployment engineer that deploys the application using Docker Compose, waits for health checks, tests key endpoints, and collects comprehensive deployment information including container ID, IP, network, port mappings, resource usage, and logs.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/docker-deploy</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-docker">Docker</span>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Pre-deploy cleanup of previous containers and port verification</li>
+    <li>Deploys with <code>docker compose up -d</code> and waits for health check</li>
+    <li>Endpoint verification: health, auth login, protected routes, error handling</li>
+    <li>Full access information table: URL, container name/ID, IP, network, ports, resource usage</li>
+    <li>Container logs and health check history</li>
+    <li>Report at <code>reports/docker-deploy-report.md</code></li>
+  </ul>
+</div>
+
+<!-- /docker-test -->
+<div class="skill-card card-orange">
+  <h3><code>/docker-test</code> Docker Integration Tests</h3>
+  <p class="desc">
+    A QA engineer that runs comprehensive integration tests against the live Docker deployment using curl. Covers smoke tests, authentication flows, CRUD operations, order lifecycle, security tests (XSS, SQL injection, auth bypass), edge cases, and container health verification.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/docker-test</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-docker">Docker (container running on port 3000)</span>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Seven test categories: smoke, authentication, CRUD, order flow, security, edge cases, container health</li>
+    <li>Security tests: XSS payloads, SQL injection, auth bypass, secret exposure</li>
+    <li>Edge cases: empty bodies, wrong content types, very long strings, concurrent requests</li>
+    <li>Container health monitoring during tests (restarts, memory, error logs)</li>
+    <li>Detailed failure analysis with full curl commands and responses</li>
+    <li>Report at <code>reports/docker-integration-test-report.md</code></li>
+  </ul>
+</div>
+
+<!-- /docker-teardown -->
+<div class="skill-card card-orange">
+  <h3><code>/docker-teardown</code> Docker Teardown</h3>
+  <p class="desc">
+    A cleanup engineer that captures the current Docker state, performs a graceful shutdown with <code>docker compose down</code>, verifies containers are removed and ports are released, and reports on remaining resources that could be cleaned up.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/docker-teardown</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-docker">Docker</span>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Captures full state before teardown (containers, networks, images, volumes, resource usage)</li>
+    <li>Graceful shutdown via <code>docker compose down</code></li>
+    <li>Verifies containers stopped and port 3000 released</li>
+    <li>Lists dangling images and unused volumes (does not auto-prune)</li>
+    <li>Report at <code>reports/docker-teardown-report.md</code></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--        TESTING                             -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="testing"><span class="dot dot-purple"></span>Testing</h2>
+
+<!-- /unit-test -->
+<div class="skill-card card-purple">
+  <h3><code>/unit-test</code> Unit Test Engineer</h3>
+  <p class="desc">
+    A senior unit test engineer that analyzes codebases, maps existing test coverage, identifies gaps, creates comprehensive unit tests, and runs them iteratively until they all pass. Supports any tech stack and resolves project names from prior work sessions.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/unit-test *
+/unit-test * control-backend-api
+/unit-test se/inbooks/backend/admin/auth/AdminAuth.java
+/unit-test AdminAuth.java control-backend-api
+/unit-test --fix-ignored
+/unit-test --fix-ignored control-backend-api</div>
+
+  <h4>Modes</h4>
+  <ul>
+    <li><strong>Full Scan</strong> (<code>/unit-test *</code>) &mdash; Scans all existing unit tests, maps coverage, identifies every file missing tests, creates unit tests for all gaps, runs and fixes until green</li>
+    <li><strong>Full Scan at Path</strong> (<code>/unit-test * {path_or_name}</code>) &mdash; Same as full scan but targets a specific project by path or name (e.g., <code>control-backend-api</code>)</li>
+    <li><strong>Single File</strong> (<code>/unit-test {file}</code>) &mdash; Creates unit tests for a specific file or class, checks for existing tests first</li>
+    <li><strong>Single File at Path</strong> (<code>/unit-test {file} {path_or_name}</code>) &mdash; Targets a specific file in a specific project</li>
+    <li><strong>Fix Ignored</strong> (<code>/unit-test --fix-ignored</code>) &mdash; Finds all ignored/disabled/skipped tests (@Disabled, @Ignore, .skip, pytest.mark.skip, t.Skip, #[ignore]), presents them in a selectable list, then unignores and debugs each selected test until it passes. User can fix all, pick specific tests, or only fix tests with no reason given</li>
+  </ul>
+
+  <h4>Multi-Stack Support</h4>
+  <ul>
+    <li><strong>Java:</strong> JUnit 5 + Mockito, Maven (<code>mvn test</code>) or Gradle (<code>gradle test</code>)</li>
+    <li><strong>C# / .NET:</strong> xUnit / NUnit / MSTest (<code>dotnet test</code>)</li>
+    <li><strong>JavaScript / TypeScript:</strong> Jest / Vitest / Mocha (<code>npm test</code>)</li>
+    <li><strong>Python:</strong> pytest / unittest (<code>pytest</code>)</li>
+    <li><strong>Go:</strong> stdlib testing (<code>go test ./...</code>)</li>
+    <li><strong>Rust:</strong> built-in test framework (<code>cargo test</code>)</li>
+    <li><strong>PHP:</strong> PHPUnit &mdash; <strong>Ruby:</strong> RSpec / Minitest</li>
+  </ul>
+
+  <h4>Project Name Resolution</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">The command resolves project names from prior work. For example, typing <code>control-backend-api</code> is resolved to the full path based on known project directories. If the name can't be resolved, the user is asked for the full path.</p>
+
+  <details>
+    <summary>Pipeline Phases (5 phases)</summary>
+    <div class="details-body">
+      <ol>
+        <li><strong>Parse &amp; Resolve</strong> &mdash; Parse arguments, resolve project name to path, detect tech stack, find test directory and conventions.</li>
+        <li><strong>Map Coverage</strong> (full scan) &mdash; Find all test files, document what each tests, find all source files, create a coverage map (Full / Partial / None), identify gaps sorted by priority.</li>
+        <li><strong>Create Tests</strong> &mdash; Launch specialized test agents for each file. Tests cover happy path, edge cases, error handling, return values, and side effects. Mocks external dependencies only.</li>
+        <li><strong>Run &amp; Fix</strong> &mdash; Run new tests, analyze failures (compilation errors, mock issues, assertion failures, source bugs), fix and re-run up to 5 iterations. Then run full test suite to check for regressions.</li>
+        <li><strong>Report</strong> &mdash; Generate detailed HTML report with coverage map, tests created, fixes applied, source bugs found, test run results, and remaining gaps.</li>
+      </ol>
+    </div>
+  </details>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Comprehensive coverage mapping &mdash; documents every existing test and identifies every gap</li>
+    <li>Matches project's existing test patterns, naming conventions, and utilities</li>
+    <li>Smart failure analysis &mdash; distinguishes test bugs from source bugs</li>
+    <li>Iterative fix loop &mdash; tests are run and fixed until green (up to 5 iterations)</li>
+    <li>Full suite regression check after new tests pass individually</li>
+    <li>Source bugs documented but never modified &mdash; only test files are created/changed</li>
+    <li>Professional HTML report at <code>reports/unit-test-report.html</code></li>
+    <li>User controls scope: all gaps, top priority only, specific files, or just the coverage map</li>
+    <li><code>--fix-ignored</code> mode &mdash; finds all @Disabled/@Ignore/skip tests, presents selectable list, unignores and fixes them individually</li>
+    <li>Intelligent triage &mdash; distinguishes tests that need test fixes vs source fixes vs deletion (obsolete features)</li>
+  </ul>
+</div>
+
+<!-- /deps -->
+<div class="skill-card card-orange">
+  <h3><code>/deps</code> Dependency Health Auditor</h3>
+  <p class="desc">
+    A senior security &amp; dependency engineer that scans all project dependencies for known vulnerabilities (CVEs), outdated packages, and license compatibility risks. Produces a risk-scored health grade and can auto-apply safe updates or generate CI automation configs.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/deps
+/deps control-backend-api
+/deps --vuln-only
+/deps --outdated gateway-backend
+/deps --license</div>
+
+  <h4>Modes</h4>
+  <ul>
+    <li><strong>Full Audit</strong> (<code>/deps</code>) &mdash; Runs all three checks: vulnerabilities, outdated packages, and license audit</li>
+    <li><strong>Vulnerabilities Only</strong> (<code>/deps --vuln-only</code>) &mdash; Focus on CVEs and exploitability assessment only</li>
+    <li><strong>Outdated Only</strong> (<code>/deps --outdated</code>) &mdash; Check for newer versions available, categorized as patch/minor/major</li>
+    <li><strong>License Only</strong> (<code>/deps --license</code>) &mdash; Check license compatibility (permissive, weak/strong copyleft, unknown)</li>
+  </ul>
+
+  <h4>Multi-Stack Support</h4>
+  <ul>
+    <li><strong>JavaScript / TypeScript:</strong> npm audit, yarn audit, license-checker</li>
+    <li><strong>Java (Maven):</strong> OWASP dependency-check, versions:display-dependency-updates</li>
+    <li><strong>Java (Gradle):</strong> dependencyCheckAnalyze, dependencyUpdates</li>
+    <li><strong>C# / .NET:</strong> dotnet list package --vulnerable / --outdated</li>
+    <li><strong>Python:</strong> pip-audit, safety, pip-licenses</li>
+    <li><strong>Go:</strong> govulncheck, go list -m -u all</li>
+    <li><strong>Rust:</strong> cargo audit, cargo outdated, cargo license</li>
+    <li><strong>PHP:</strong> composer audit / outdated &mdash; <strong>Ruby:</strong> bundle audit / outdated</li>
+  </ul>
+
+  <h4>Project Name Resolution</h4>
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:0.5rem;">Resolves project names from prior work. For example, <code>control-backend-api</code> resolves to the full path. If unresolvable, the user is asked for the full path.</p>
+
+  <details>
+    <summary>Pipeline Phases (4 phases)</summary>
+    <div class="details-body">
+      <ol>
+        <li><strong>Parse &amp; Resolve</strong> &mdash; Parse arguments, resolve project path, detect stack and package manager, identify lock files and native audit commands.</li>
+        <li><strong>Vulnerability Scan</strong> &mdash; Run native audit tools, parse CVEs with severity/CVSS scores, assess exploitability in the project context (exploitable / potentially exploitable / not exploitable).</li>
+        <li><strong>Outdated &amp; License</strong> &mdash; Check all dependencies for newer versions (patch/minor/major), compute staleness score. Audit licenses for copyleft/unknown/no-license risks.</li>
+        <li><strong>Report &amp; Action</strong> &mdash; Generate health score (0&ndash;100, grade A&ndash;F), produce detailed HTML report, offer to auto-fix safe updates or export Dependabot/Renovate configs.</li>
+      </ol>
+    </div>
+  </details>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Health score 0&ndash;100 with letter grade (A&ndash;F) &mdash; quick project health snapshot</li>
+    <li>Exploitability assessment &mdash; checks if CVEs are actually reachable in your code, not just theoretical</li>
+    <li>Staleness score &mdash; quantifies how far behind dependencies are, weighted by severity</li>
+    <li>License risk categorization &mdash; permissive, weak copyleft, strong copyleft, unknown, no license</li>
+    <li>Safe auto-fix &mdash; applies patch updates automatically, asks before major bumps</li>
+    <li>CI export &mdash; generates Dependabot or Renovate config for ongoing automation</li>
+    <li>Distinguishes direct vs transitive dependencies for update prioritization</li>
+    <li>Professional HTML report at <code>reports/deps-audit-report.html</code></li>
+  </ul>
+</div>
+
+<!-- /playwright-test -->
+<div class="skill-card card-purple">
+  <h3><code>/playwright-test</code> Playwright E2E Tests</h3>
+  <p class="desc">
+    A senior E2E test engineer that runs the full Playwright browser test suite against the web application. It verifies Playwright installation, runs all tests, analyzes failures (distinguishing app bugs from test bugs), identifies coverage gaps, writes new tests for untested flows, and generates both a Playwright HTML report and a markdown summary.
+  </p>
+
+  <h4>Usage</h4>
+  <div class="code-block">/playwright-test</div>
+
+  <h4>Prerequisites</h4>
+  <span class="prereq prereq-playwright">Playwright</span>
+  <span class="prereq prereq-docker">App running on port 3000 (or Docker container)</span>
+
+  <h4>Key Features</h4>
+  <ul>
+    <li>Pre-flight check: verifies Playwright is installed, installs Chromium if needed</li>
+    <li>Runs full suite: <code>cd demo-api &amp;&amp; npx playwright test</code></li>
+    <li>Smart failure analysis: determines if each failure is an app bug or a test bug, fixes accordingly</li>
+    <li>Coverage gap detection: checks for untested pages, interactions, error states, edge cases, accessibility</li>
+    <li>Writes new tests following existing patterns (<code>data-testid</code> selectors, <code>test.describe</code> blocks)</li>
+    <li>Iterative &mdash; re-runs until all tests pass</li>
+    <li>Interactive HTML report at <code>reports/playwright-report/index.html</code></li>
+    <li>Summary at <code>reports/playwright-test-report.md</code></li>
+  </ul>
+</div>
+
+</div><!-- end .container -->
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer class="footer">
+  Generated on March 18, 2026 &nbsp;&middot;&nbsp; Powered by <strong>Claude Code</strong>
+</footer>
+
+</body>
+</html>

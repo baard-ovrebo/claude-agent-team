@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Powered Development Pipeline &mdash; Competition Presentation</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --indigo: #4f46e5;
+    --indigo-light: #eef2ff;
+    --indigo-dark: #3730a3;
+    --emerald: #059669;
+    --emerald-light: #ecfdf5;
+    --emerald-border: #a7f3d0;
+    --rose: #e11d48;
+    --rose-light: #fff1f2;
+    --amber: #d97706;
+    --amber-light: #fffbeb;
+    --sky: #0284c7;
+    --sky-light: #f0f9ff;
+    --violet: #7c3aed;
+    --violet-light: #f5f3ff;
+    --slate-800: #1e293b;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+    --radius: 12px;
+    --radius-lg: 16px;
+    --font: system-ui, 'Segoe UI', -apple-system, sans-serif;
+    --mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Fira Code', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+
+  /* ── Sticky Nav ── */
+  .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(248,250,252,0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+  }
+  .top-nav-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 54px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .top-nav-inner::-webkit-scrollbar { display: none; }
+  .nav-brand {
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--indigo);
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+  .nav-links { display: flex; gap: 2px; }
+  .nav-links a {
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-links a:hover { background: var(--indigo-light); color: var(--indigo); }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%);
+    color: #fff;
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 100%, rgba(0,0,0,0.15) 0%, transparent 50%);
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.95);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border-radius: 20px;
+    margin-bottom: 1.25rem;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .hero h1 {
+    font-size: 2.75rem;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
+  .hero .subtitle {
+    font-size: 1.15rem;
+    opacity: 0.88;
+    line-height: 1.65;
+    max-width: 600px;
+    margin: 0 auto 1.5rem;
+  }
+  .hero-meta {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    font-size: 13px;
+    opacity: 0.75;
+    flex-wrap: wrap;
+  }
+  .hero-meta span { white-space: nowrap; }
+
+  /* ── Container ── */
+  .container { max-width: 960px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+
+  /* ── Sections ── */
+  .section {
+    margin-bottom: 4rem;
+    scroll-margin-top: 70px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border);
+  }
+  .section-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .section-header h2 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+
+  /* Section color themes */
+  .sn-problem { background: var(--rose-light); }
+  .sn-idea { background: var(--amber-light); }
+  .sn-how { background: var(--indigo-light); }
+  .sn-demo { background: var(--emerald-light); }
+  .sn-compare { background: var(--sky-light); }
+  .sn-challenges { background: var(--violet-light); }
+  .sn-future { background: linear-gradient(135deg, var(--indigo-light), var(--violet-light)); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: var(--shadow-md); }
+
+  .card h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+  .card p, .card li {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+  .card ul, .card ol { padding-left: 1.25rem; }
+  .card li { margin-bottom: 0.35rem; }
+
+  .card-accent-rose { border-left: 4px solid var(--rose); }
+  .card-accent-amber { border-left: 4px solid var(--amber); }
+  .card-accent-indigo { border-left: 4px solid var(--indigo); }
+  .card-accent-emerald { border-left: 4px solid var(--emerald); }
+  .card-accent-sky { border-left: 4px solid var(--sky); }
+  .card-accent-violet { border-left: 4px solid var(--violet); }
+
+  /* ── Code Blocks ── */
+  .code-block {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    padding: 16px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    margin: 0.75rem 0 1rem;
+    line-height: 1.6;
+    position: relative;
+  }
+  .code-block .prompt { color: #a6adc8; user-select: none; }
+  .code-block .cmd { color: #89b4fa; }
+  .code-block .arg { color: #f9e2af; }
+  .code-block .comment { color: #6c7086; font-style: italic; }
+  .code-label {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: #585b70;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: var(--mono);
+  }
+
+  /* ── Comparison Table ── */
+  .compare-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin: 1rem 0;
+  }
+  .compare-table th {
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+  }
+  .compare-table th:first-child { background: #fef2f2; color: var(--rose); width: 30%; }
+  .compare-table th:nth-child(2) { background: #fef2f2; color: var(--rose); width: 35%; }
+  .compare-table th:nth-child(3) { background: #ecfdf5; color: var(--emerald); width: 35%; }
+  .compare-table td {
+    padding: 12px 18px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    background: var(--card-bg);
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .compare-table td:nth-child(2) { color: var(--text-muted); }
+  .compare-table td:nth-child(3) { color: var(--emerald); }
+
+  /* ── Timeline / Flow ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 1.5rem 0;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    position: relative;
+  }
+  .flow-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 40px;
+  }
+  .flow-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--indigo);
+    border: 3px solid var(--indigo-light);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .flow-line {
+    width: 2px;
+    flex-grow: 1;
+    background: var(--border);
+    min-height: 30px;
+  }
+  .flow-step:last-child .flow-line { display: none; }
+  .flow-content {
+    padding-bottom: 1.25rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .flow-content h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .flow-content p {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .flow-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 6px;
+  }
+  .fb-api { background: #dbeafe; color: #1e40af; }
+  .fb-ai { background: #f3e8ff; color: #6b21a8; }
+  .fb-user { background: #fef3c7; color: #92400e; }
+  .fb-auto { background: #dcfce7; color: #166534; }
+
+  /* ── Demo Walkthrough (collapsible) ── */
+  details {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-sm);
+  }
+  details summary {
+    padding: 14px 18px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: background 0.15s;
+  }
+  details summary:hover { background: var(--border-light); }
+  details summary::before {
+    content: '\25B6';
+    display: inline-block;
+    font-size: 10px;
+    color: var(--text-light);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  .details-body {
+    padding: 16px 18px;
+    font-size: 14.5px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+  .details-body p { margin-bottom: 0.5rem; }
+  .step-badge {
+    display: inline-block;
+    background: var(--indigo);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+  }
+  .step-badge-user { background: var(--amber); }
+  .step-badge-ai { background: var(--violet); }
+
+  /* ── Highlights ── */
+  .highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .highlight-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow-sm);
+  }
+  .highlight-card .hl-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .highlight-card h4 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+  .highlight-card p {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ── Inline tag ── */
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--indigo-light);
+    color: var(--indigo-dark);
+    padding: 2px 7px;
+    border-radius: 5px;
+  }
+
+  /* ── Blockquote ── */
+  .callout {
+    background: var(--indigo-light);
+    border-left: 4px solid var(--indigo);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    font-size: 15px;
+    color: var(--indigo-dark);
+    line-height: 1.65;
+  }
+  .callout strong { color: var(--indigo); }
+
+  /* ── Numbered list with emoji ── */
+  .icon-list {
+    list-style: none;
+    padding: 0;
+  }
+  .icon-list li {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    font-size: 15px;
+    color: var(--text-muted);
+  }
+  .icon-list .il-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 2.5rem 2rem;
+    color: var(--text-light);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+  .footer strong { color: var(--indigo); }
+  .footer .footer-brand {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+
+  /* ── Print ── */
+  @media print {
+    .top-nav { display: none; }
+    .hero { padding: 2.5rem 1.5rem; background: #4f46e5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .container { padding: 1.5rem 1rem; }
+    .section { margin-bottom: 2rem; page-break-inside: avoid; }
+    .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+    details { break-inside: avoid; }
+    details[open] .details-body { display: block; }
+    .code-block { background: #f1f1f1 !important; color: #222 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .compare-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-size: 13px; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 2rem; }
+    .hero { padding: 3.5rem 1.25rem 3rem; }
+    .container { padding: 2rem 1rem 3rem; }
+    .card { padding: 1.25rem; }
+    .section-header h2 { font-size: 1.35rem; }
+    .highlight-grid { grid-template-columns: 1fr; }
+    .compare-table { font-size: 13px; }
+    .compare-table th, .compare-table td { padding: 10px 12px; }
+    .hero-meta { gap: 1rem; }
+    .nav-brand { display: none; }
+    .flow-content h4 { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TOP NAV ═══════════ -->
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <span class="nav-brand">AI Dev Pipeline</span>
+    <div class="nav-links">
+      <a href="#problem">Problem</a>
+      <a href="#idea">Our Idea</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#demo">Demo</a>
+      <a href="#before-after">Before/After</a>
+      <a href="#challenges">Challenges</a>
+      <a href="#future">Future</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════ HERO ═══════════ -->
+<header class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">AI Competition 2026</div>
+    <h1>From Jira Ticket to<br>Shipped Code in One Command</h1>
+    <p class="subtitle">An AI-powered development pipeline that handles design, implementation, code review, screenshots, and Jira updates &mdash; so developers can focus on decisions, not process.</p>
+    <div class="hero-meta">
+      <span>By B&aring;rd &Oslash;vreb&oslash;</span>
+      <span>Finago &mdash; 24SO ERP</span>
+      <span>Claude Code + Jira + Paper.design + JAM + Playwright</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  1. PROBLEM STATEMENT                      -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="problem">
+  <div class="section-header">
+    <span class="section-number sn-problem">&#x1F534;</span>
+    <h2>1. Problem Statement</h2>
+  </div>
+
+  <div class="card card-accent-rose">
+    <h3>The Hidden Cost of Developer Ceremony</h3>
+    <p>Developers waste enormous amounts of time on process overhead that surrounds actual coding. Reading Jira tickets, context-switching to design tools, manually screenshotting changes, writing comments, logging time, updating status &mdash; the actual code change might take 30 minutes, but the surrounding ceremony adds another 30&ndash;60 minutes per ticket.</p>
+  </div>
+
+  <div class="card card-accent-rose">
+    <h3>A Typical Workflow (Before AI)</h3>
+    <ol style="padding-left: 1.25rem;">
+      <li>Open Jira, find your ticket, read description and comments</li>
+      <li>Download any attachments (screenshots of the bug, specs)</li>
+      <li>Open the codebase, search for relevant files</li>
+      <li>Context-switch to a design tool if UI changes are needed</li>
+      <li>Make the actual code changes</li>
+      <li>Start the app, navigate to the right page, take screenshots</li>
+      <li>Switch back to Jira, write a comment describing what you did</li>
+      <li>Upload screenshots and any reports as attachments</li>
+      <li>Log time (if you remember)</li>
+      <li>Update the ticket status</li>
+    </ol>
+    <p style="margin-top: 0.75rem; font-weight: 600; color: var(--rose);">Every step is manual. Context-switching is constant. And this repeats for every single ticket.</p>
+  </div>
+
+  <div class="highlight-grid">
+    <div class="highlight-card">
+      <div class="hl-icon">&#x23F1;</div>
+      <h4>60%+ Time on Process</h4>
+      <p>More than half of a developer's time on a ticket is spent on process overhead, not on writing or reasoning about code.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">&#x1F500;</div>
+      <h4>Constant Context Switching</h4>
+      <p>Browser to IDE to terminal to design tool to browser to Jira &mdash; each switch has a cognitive cost and invites distraction.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">&#x1F6AB;</div>
+      <h4>Missed Steps</h4>
+      <p>Time logging forgotten. Screenshots skipped. Status not updated. Code reviews postponed. The boring steps get dropped.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  2. OUR IDEA                               -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="idea">
+  <div class="section-header">
+    <span class="section-number sn-idea">&#x1F4A1;</span>
+    <h2>2. Our Idea</h2>
+  </div>
+
+  <div class="callout">
+    <strong>One-liner:</strong> We built an AI pipeline that takes a Jira ticket number and handles everything from design mockup to implementation to Jira updates &mdash; with human checkpoints at every critical decision.
+  </div>
+
+  <div class="card card-accent-amber">
+    <h3>For: Developers Who Want to Focus on Code, Not Process</h3>
+    <p>The developer stays in the terminal &mdash; their natural habitat. One slash command kicks off the entire workflow. The AI handles the tedious process steps (fetching context, creating mockups, screenshotting, uploading, logging time) while the human makes the decisions that matter: approving designs, reviewing implementation approaches, and deciding when something is ready.</p>
+  </div>
+
+  <div class="card card-accent-amber">
+    <h3>The Key Problem We Solve</h3>
+    <p>We eliminate the 60%+ of development time that goes to process instead of code. Instead of ten manual steps across five different tools, the developer types one command and gets asked a few focused questions. The AI does the legwork; the human does the thinking.</p>
+  </div>
+
+  <div class="highlight-grid">
+    <div class="highlight-card">
+      <div class="hl-icon">&#x1F3AF;</div>
+      <h4>Single Entry Point</h4>
+      <p>Type <code>/jira FO-2847</code> for a single ticket, or <code>/jira sprint</code> to process an entire sprint backlog. One command, full lifecycle.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">&#x1F6E1;</div>
+      <h4>Human Checkpoints</h4>
+      <p>The AI never acts without asking. Design approval, implementation approach, Jira updates &mdash; all require explicit user confirmation.</p>
+    </div>
+    <div class="highlight-card">
+      <div class="hl-icon">&#x1F916;</div>
+      <h4>Specialized Agents</h4>
+      <p>UI designer, backend dev, frontend dev, code reviewer, report generator &mdash; each agent is an expert at its role.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  3. HOW IT WORKS                           -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="how-it-works">
+  <div class="section-header">
+    <span class="section-number sn-how">&#x2699;</span>
+    <h2>3. How It Works</h2>
+  </div>
+
+  <div class="card card-accent-indigo" style="margin-bottom: 1.5rem;">
+    <h3>Input &rarr; Output</h3>
+    <p><strong>Single ticket:</strong> <code>/jira FO-2847</code> &mdash; a Jira ticket number typed in the terminal</p>
+    <p><strong>Whole sprint:</strong> <code>/jira sprint</code> &mdash; fetches all active sprint tickets, lets you pick which to process, works through them sequentially</p>
+    <p><strong>Quick time log:</strong> <code>/tempo addTime FO-2847 2h "Bug fix"</code> &mdash; log time without leaving the terminal</p>
+    <p><strong>List teams:</strong> <code>/jira teams</code> &mdash; fetches all available Scrum teams from Jira dynamically</p>
+    <p><strong>Analyze a JAM:</strong> <code>/jam https://jam.dev/c/abc123</code> &mdash; analyzes a JAM bug recording with video analysis, console logs, network requests, and user events</p>
+    <p><strong>Unit test scan:</strong> <code>/unit-test * control-backend-api</code> &mdash; scans a project for test coverage gaps, maps all existing tests, creates missing unit tests, and runs them until green</p>
+    <p><strong>Fix ignored tests:</strong> <code>/unit-test --fix-ignored control-backend-api</code> &mdash; finds all @Disabled/@Ignore/skip tests, lets you select which to unignore, then debugs and fixes them until green</p>
+    <p><strong>Dependency audit:</strong> <code>/deps control-backend-api</code> &mdash; scans all dependencies for CVEs, outdated packages, and license risks with a health score (A&ndash;F grade)</p>
+    <p><strong>Output:</strong> Implemented fix, design mockups, before/after screenshot comparison, HTML report, Jira comment + attachments, logged time, transitioned status</p>
+  </div>
+
+  <!-- Flow Diagram -->
+  <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text);">Pipeline Flow</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-api">API</span> Fetch &amp; Analyze Ticket</h4>
+        <p>Calls Jira REST API to get ticket details, downloads attachments (including images for visual inspection), classifies the work as Bug/UI/Backend/Full-stack, finds relevant code files across the codebase.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-auto">Auto</span> Detect &amp; Analyze JAM Recordings</h4>
+        <p>Automatically scans the ticket description and comments for jam.dev links. When found, uses the <strong>JAM MCP tools</strong> to fetch the full recording: video analysis, console errors, failed network requests, and user interaction timeline. The analysis is included in the ticket summary to inform all subsequent phases.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-auto">Auto</span> Detect Tech Stack &amp; Ask for Paths</h4>
+        <p>Always asks the user which project paths to use &mdash; never assumes or auto-detects. The current working directory is the AI orchestration project, not the ticket's codebase. The user provides explicit paths (e.g., Backend: D:\Finago\control-backend-api, Frontend: D:\Finago\control-frontend). Then detects the stack for each provided path and builds a profile so all agents use the correct language and framework.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-user">User</span> Approve Plan</h4>
+        <p>Presents ticket analysis, classification, affected files, and suggested approach. User reviews and approves, modifies, or requests analysis only.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-ai">AI Agent</span> Design in Paper.design</h4>
+        <p>UI Designer agent creates visual mockups in Paper using MCP &mdash; artboards with HTML/CSS matching the app's design language. Mandatory for any UI change, even a color tweak.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-user">User</span> Review &amp; Approve Design</h4>
+        <p>User opens Paper to review mockups. Can accept, request changes, or modify the design directly in Paper &mdash; the AI will fetch the updated design via MCP.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-auto">Auto</span> Before Screenshots</h4>
+        <p>Playwright captures screenshots of all affected pages <strong>before</strong> any code changes are made. These become the baseline for the visual comparison.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-ai">AI Agents</span> Implement Changes</h4>
+        <p>Specialized Frontend and/or Backend developer agents implement the fix following the approved design. Agents can run in parallel for full-stack tickets.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-auto">Auto</span> Code Analysis &amp; After Screenshots</h4>
+        <p>Code Analyst agent reviews only the diff for security/quality issues (auto-fixes critical ones). Playwright takes matching <strong>after</strong> screenshots of the same pages and generates a side-by-side comparison HTML with red &ldquo;Before&rdquo; and green &ldquo;After&rdquo; labels.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-auto">Auto</span> Generate HTML Report</h4>
+        <p>Report Generator agent compiles all findings into a professional HTML report with ticket details, changes, code analysis, and verification screenshots.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-user">User</span> Choose Jira Update Strategy</h4>
+        <p>User decides: let the AI update Jira (comment + attachments + status transition + time log), handle it manually, or skip. No external action without explicit permission.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-track"><div class="flow-dot"></div><div class="flow-line"></div></div>
+      <div class="flow-content">
+        <h4><span class="flow-badge fb-api">API</span> Update Jira &amp; Log Time</h4>
+        <p>Posts a comment, uploads the HTML report and all screenshots as attachments, transitions the ticket status, and logs a realistic time estimate via the Jira worklog API.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Components -->
+  <h3 style="font-size: 1.1rem; font-weight: 700; margin: 2rem 0 1rem; color: var(--text);">Key Components</h3>
+  <div class="highlight-grid">
+    <div class="highlight-card">
+      <h4>Claude Code Orchestrator</h4>
+      <p>The main skill (<code>/jira</code>) acts as a senior tech lead, coordinating all phases and spawning specialized agents via the Agent tool.</p>
+    </div>
+    <div class="highlight-card">
+      <h4>Jira REST API</h4>
+      <p>Full integration: fetch issues, download attachments, post comments in Atlassian Document Format, upload files, transition status, log worklogs.</p>
+    </div>
+    <div class="highlight-card">
+      <h4>Paper MCP</h4>
+      <p>Model Context Protocol integration with Paper.design &mdash; create artboards, write HTML/CSS designs, take screenshots, export JSX, all programmatically.</p>
+    </div>
+    <div class="highlight-card">
+      <h4>Playwright</h4>
+      <p>Headless browser automation for capturing real screenshots of the running application after changes are implemented.</p>
+    </div>
+    <div class="highlight-card">
+      <h4>JAM MCP Integration</h4>
+      <p>Connects to jam.dev via Model Context Protocol &mdash; fetches video analysis, console logs, network requests, and user event timelines from bug recordings linked in Jira tickets.</p>
+    </div>
+  </div>
+
+  <!-- Real Prompt Examples -->
+  <h3 style="font-size: 1.1rem; font-weight: 700; margin: 2rem 0 1rem; color: var(--text);">Real Prompt Examples from the Skills</h3>
+
+  <div class="code-block">
+    <span class="code-label">jira orchestrator</span>
+<span class="prompt">$</span> <span class="cmd">/jira</span> <span class="arg">FO-2872</span>
+
+<span class="comment"># The orchestrator fetches the ticket via curl:</span>
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  "${JIRA_BASE_URL}/rest/api/3/issue/FO-2872?expand=renderedFields"
+  </div>
+
+  <div class="code-block">
+    <span class="code-label">tempo time tracking</span>
+<span class="prompt">$</span> <span class="cmd">/tempo</span> <span class="arg">addTime FO-2872 14:00 16:00 "Implemented sign-in button color change"</span>
+<span class="prompt">$</span> <span class="cmd">/tempo</span> <span class="arg">getTime FO-2872</span>
+
+<span class="comment"># Output:</span>
+| Date       | Day | Start | End   | Duration | Author      | Description                          |
+|------------|-----|-------|-------|----------|-------------|--------------------------------------|
+| 2026-03-18 | Wed | 14:00 | 16:00 | 2h 0m    | B&aring;rd &Oslash;vreb&oslash; | Implemented sign-in button color change |
+  </div>
+
+  <div class="code-block">
+    <span class="code-label">ui designer agent prompt</span>
+<span class="comment"># Excerpt from the UI Designer agent prompt passed to Paper MCP:</span>
+
+You are a Senior UI/UX Designer. Use the Paper MCP tools to design the solution.
+
+IMPORTANT: Prefix ALL artboard names with the ticket key:
+  "FO-2872 &mdash; Current State"
+  "FO-2872 &mdash; Proposed Fix"
+
+Match the existing application's design language. Use realistic content.
+Screenshot after every 2-3 modifications to verify quality.
+  </div>
+
+  <div class="code-block">
+    <span class="code-label">jam analysis via MCP</span>
+<span class="prompt">$</span> <span class="cmd">/jam</span> <span class="arg">https://jam.dev/c/4828d597-d49b-4fa8-99b8-f696321af056</span>
+
+<span class="comment"># Parallel MCP calls:</span>
+mcp__Jam__getDetails(jamId: "https://jam.dev/c/...")
+mcp__Jam__analyzeVideo(jamId: "https://jam.dev/c/...")
+mcp__Jam__getConsoleLogs(jamId: "https://jam.dev/c/...", logLevel: "error")
+mcp__Jam__getNetworkRequests(jamId: "https://jam.dev/c/...", statusCode: "5xx")
+mcp__Jam__getUserEvents(jamId: "https://jam.dev/c/...")
+
+<span class="comment"># Output: structured analysis with steps, errors, environment info</span>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label">dynamic team fetching</span>
+<span class="prompt">$</span> <span class="cmd">/jira</span> <span class="arg">teams</span>
+
+<span class="comment"># Fetches all Scrum teams from Jira via JQL:</span>
+| #  | Team Name              |
+|----|------------------------|
+| 1  | Annual accounts        |
+| 2  | BANK                   |
+| 3  | Control                |
+| 4  | Rocket                 |
+| ...| (13 teams total)       |
+
+<span class="comment"># /jira sprint also uses this to let you pick a team dynamically</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  4. LIVE DEMO WALKTHROUGH                  -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="demo">
+  <div class="section-header">
+    <span class="section-number sn-demo">&#x1F3AC;</span>
+    <h2>4. Live Demo Walkthrough</h2>
+  </div>
+
+  <p style="color: var(--text-muted); margin-bottom: 1.25rem;">Ticket FO-2872: <strong>&ldquo;Change color of sign in button&rdquo;</strong> &mdash; a real UI change walked through the full pipeline. Click each step to expand.</p>
+
+  <details open>
+    <summary><span class="step-badge">Step 1</span> User types the command</summary>
+    <div class="details-body">
+      <p>The developer is in their terminal, inside Claude Code. They type:</p>
+      <div class="code-block"><span class="prompt">$</span> <span class="cmd">/jira</span> <span class="arg">FO-2872</span></div>
+      <p>That single command triggers the entire pipeline. The orchestrator takes over.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-ai">Step 2</span> AI fetches and analyzes the ticket</summary>
+    <div class="details-body">
+      <p>The orchestrator loads <code>.env</code> credentials, calls the Jira REST API, downloads the ticket including any attachments (screenshots, specs), and presents a structured summary:</p>
+      <p><strong>Ticket:</strong> FO-2872 &mdash; &ldquo;Change color of sign in button&rdquo;<br>
+      <strong>Type:</strong> DevBug | <strong>Priority:</strong> Medium | <strong>Status:</strong> In Progress<br>
+      <strong>Classification:</strong> UI Change | <strong>Requires Design:</strong> Yes<br>
+      <strong>Affected Files:</strong> LoginPage.jsx, LoginPage.css</p>
+      <p>The AI asks: <em>&ldquo;How would you like to proceed? Proceed / Modify Plan / Just Analyze&rdquo;</em></p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-ai">Step 3</span> AI creates design mockup in Paper</summary>
+    <div class="details-body">
+      <p>Since this is a UI change, the orchestrator spawns a <strong>UI Designer agent</strong> that connects to Paper.design via MCP. The agent:</p>
+      <ul style="padding-left: 1.25rem; margin: 0.5rem 0;">
+        <li>Reads the existing CSS to match the app's design language</li>
+        <li>Creates artboards: &ldquo;FO-2872 &mdash; Current State&rdquo; and &ldquo;FO-2872 &mdash; Proposed Fix&rdquo;</li>
+        <li>Writes HTML/CSS into the artboards showing the button color change</li>
+        <li>Takes screenshots to verify the design renders correctly</li>
+      </ul>
+      <p>This is <strong>mandatory</strong> even for a simple color change. The skill enforces it with explicit &ldquo;MANDATORY&rdquo; language.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-user">Step 4</span> User reviews and approves the design</summary>
+    <div class="details-body">
+      <p>The user opens Paper.design and sees the mockup artboards. They have four options:</p>
+      <ol style="padding-left: 1.25rem; margin: 0.5rem 0;">
+        <li><strong>Accept designs</strong> &mdash; proceed to implementation</li>
+        <li><strong>I've made changes in Paper</strong> &mdash; the AI fetches updated designs via <code>mcp__paper__get_jsx</code> and uses those as the implementation reference</li>
+        <li><strong>Request changes</strong> &mdash; describe what to change; the designer agent iterates</li>
+        <li><strong>Skip design</strong> &mdash; go straight to implementation</li>
+      </ol>
+      <p>This is the critical human checkpoint. The user has full control of the visual direction, and can even edit directly in Paper.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-ai">Step 5</span> AI implements the change</summary>
+    <div class="details-body">
+      <p>A <strong>Frontend Developer agent</strong> is spawned with the full ticket context, the approved design reference, and the identified files. It modifies the CSS to change the button color, following the existing code patterns.</p>
+      <p>For a full-stack ticket, frontend and backend agents would run <strong>in parallel</strong>.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-ai">Step 5.5</span> Before screenshots captured (before implementation)</summary>
+    <div class="details-body">
+      <p>Before any code changes, Playwright automatically captures &ldquo;before&rdquo; screenshots of all affected pages. For this ticket, it screenshots the login page with the <em>current</em> button color. These baseline images are saved for comparison later.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-ai">Step 6</span> AI runs code review, takes after screenshots, generates comparison</summary>
+    <div class="details-body">
+      <p>Three things happen automatically after implementation:</p>
+      <ul style="padding-left: 1.25rem; margin: 0.5rem 0;">
+        <li><strong>Code Analyst agent</strong> reviews only the diff (<code>git diff</code>) for security vulnerabilities, logic errors, and code quality issues. Critical issues are auto-fixed.</li>
+        <li><strong>Playwright script</strong> launches a real browser, navigates to the same pages as the &ldquo;before&rdquo; step, and captures matching &ldquo;after&rdquo; screenshots.</li>
+        <li><strong>Before/After comparison</strong> &mdash; generates a side-by-side HTML with red-labeled &ldquo;Before&rdquo; and green-labeled &ldquo;After&rdquo; images. This comparison HTML plus all screenshots are uploaded to Jira as attachments.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-user">Step 7</span> User chooses how to handle Jira update</summary>
+    <div class="details-body">
+      <p>The orchestrator presents a summary of everything done and asks:</p>
+      <ol style="padding-left: 1.25rem; margin: 0.5rem 0;">
+        <li><strong>I'll update Jira myself</strong> &mdash; gives ready-to-paste text and file paths</li>
+        <li><strong>Agent updates Jira</strong> &mdash; post comment, upload report + screenshots, transition status</li>
+        <li><strong>Do nothing on Jira</strong> &mdash; just keep the local report</li>
+      </ol>
+      <p>No external action without explicit permission. This is a core design principle.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="step-badge step-badge-ai">Step 8</span> Report + screenshots uploaded, time logged</summary>
+    <div class="details-body">
+      <p>If the user chose &ldquo;Agent updates Jira&rdquo;, the pipeline:</p>
+      <ul style="padding-left: 1.25rem; margin: 0.5rem 0;">
+        <li>Uploads the HTML report as a Jira attachment</li>
+        <li>Uploads Paper design screenshots and Playwright verification screenshots</li>
+        <li>Posts a structured comment summarizing the resolution</li>
+        <li>Asks about status transition (In Review / Done / Ready for PROD / Keep current)</li>
+        <li>Asks about time logging with a smart estimate (e.g., &ldquo;30 minutes&rdquo; for a simple color change)</li>
+      </ul>
+      <p>Done. One command, full lifecycle.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  5. BEFORE VS AFTER                        -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="before-after">
+  <div class="section-header">
+    <span class="section-number sn-compare">&#x1F504;</span>
+    <h2>5. Before vs After</h2>
+  </div>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Area</th>
+        <th>Before (Manual)</th>
+        <th>After (AI Pipeline)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Total Time</td>
+        <td>45&ndash;90 min per ticket including all overhead steps</td>
+        <td>5&ndash;10 min with human checkpoints; ~1 command to start</td>
+      </tr>
+      <tr>
+        <td>Manual Steps</td>
+        <td>8&ndash;10 manual steps across 5+ different tools</td>
+        <td>2&ndash;3 decision points; everything else automated</td>
+      </tr>
+      <tr>
+        <td>Screenshots</td>
+        <td>Manually taken, cropped, and uploaded to Jira &mdash; often skipped entirely</td>
+        <td>Playwright auto-captures all affected pages; uploaded as Jira attachments automatically</td>
+      </tr>
+      <tr>
+        <td>Design Review</td>
+        <td>Discussed in Jira comments or Slack &mdash; no visual preview before coding</td>
+        <td>Full visual mockup in Paper.design for interactive review before a single line is coded</td>
+      </tr>
+      <tr>
+        <td>Code Review</td>
+        <td>Depends on team process; often shipped without review for small changes</td>
+        <td>Automatic security and quality analysis on every change &mdash; critical issues auto-fixed</td>
+      </tr>
+      <tr>
+        <td>Time Logging</td>
+        <td>Forgotten, back-filled at end of week, or estimated loosely</td>
+        <td>AI suggests a realistic estimate based on work complexity; logs it via the Jira API immediately</td>
+      </tr>
+      <tr>
+        <td>Jira Updates</td>
+        <td>Comment written manually, attachments uploaded one by one, status changed by hand</td>
+        <td>Structured comment, all attachments, and status transition in one batch &mdash; with user approval</td>
+      </tr>
+      <tr>
+        <td>Visual Verification</td>
+        <td>Manual screenshots, no comparison &mdash; reviewers have to remember what it looked like before</td>
+        <td>Automatic before/after screenshots with side-by-side HTML comparison (red/green labels) uploaded to Jira</td>
+      </tr>
+      <tr>
+        <td>Documentation</td>
+        <td>Rarely done for small tickets; knowledge stays in the developer's head</td>
+        <td>Professional HTML report generated for every ticket with full implementation details</td>
+      </tr>
+      <tr>
+        <td>Stack Support</td>
+        <td>Hardcoded for React/Express only</td>
+        <td>Auto-detects any stack (C#, Java, Python, Go, Rust, etc.) and tailors agent prompts</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  6. CHALLENGES & LEARNINGS                 -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="challenges">
+  <div class="section-header">
+    <span class="section-number sn-challenges">&#x1F9E0;</span>
+    <h2>6. Challenges &amp; Learnings</h2>
+  </div>
+
+  <div class="card card-accent-violet">
+    <h3>Agents Try to Skip Steps</h3>
+    <p>AI agents naturally try to optimize. For a simple color change, the agent would reason &ldquo;this is too trivial for a design mockup&rdquo; and skip straight to implementation. We had to use very explicit language &mdash; <strong>&ldquo;MANDATORY for ANY UI change. Even a one-line color change gets a Paper mockup. No exceptions.&rdquo;</strong> &mdash; and add multiple reinforcement points throughout the skill.</p>
+  </div>
+
+  <div class="card card-accent-violet">
+    <h3>Paper MCP Limitations</h3>
+    <p>Paper's MCP integration doesn't support creating new pages &mdash; only artboards within the current page. We worked around this with a naming convention: all artboards are prefixed with the ticket key (e.g., &ldquo;FO-2872 &mdash; Proposed Fix&rdquo;) so designs are grouped and identifiable on a shared canvas.</p>
+  </div>
+
+  <div class="card card-accent-violet">
+    <h3>Environment and Path Issues</h3>
+    <p>When Claude Code agents spawn sub-agents that run in different working directories, the <code>.env</code> file for Jira credentials couldn't be found with relative paths. The fix: always use absolute paths &mdash; <code>source d:/Kunder/247/AIComp/.env</code> &mdash; hardcoded into the skill. Not elegant, but reliable.</p>
+  </div>
+
+  <div class="card card-accent-violet">
+    <h3>Getting Screenshots Uploaded Consistently</h3>
+    <p>Early versions of the skill would generate screenshots but forget to upload them to Jira, or would upload the report but not the images. It took multiple iterations of the skill prompt to ensure the upload step was <strong>mandatory and explicit</strong>, with separate upload loops for design screenshots and verification screenshots.</p>
+  </div>
+
+  <div class="card card-accent-violet">
+    <h3>The Autonomy vs Control Balance</h3>
+    <p>The biggest design insight: <strong>every external action must require user confirmation.</strong> The AI can analyze, design, implement, and generate reports autonomously. But the moment it touches something external &mdash; posting to Jira, transitioning status, logging time &mdash; it must ask first. This builds trust and prevents mistakes.</p>
+  </div>
+
+  <div class="card card-accent-violet">
+    <h3>Project Path Assumptions</h3>
+    <p>The AI would auto-detect the current working directory and assume it was the ticket's codebase &mdash; but the orchestration project (AIComp) is never the right target. After the AI incorrectly routed work to the wrong project, we added a <strong>hard rule: always ask the user for project paths, never assume.</strong> The skill now explicitly states the current directory is NOT the codebase and removes all "current directory" shortcut options.</p>
+  </div>
+
+  <div class="card card-accent-violet">
+    <h3>JAM Recordings Are Client-Side SPAs</h3>
+    <p>Initial attempts to fetch JAM recordings via WebFetch returned only the Vite app shell &mdash; no replay data. JAM is a fully client-rendered SPA. The solution: integrate the <strong>JAM MCP server</strong>, which provides direct API access to video analysis, console logs, network requests, and user events without needing a browser.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  7. FUTURE PLAN                            -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="future">
+  <div class="section-header">
+    <span class="section-number sn-future">&#x1F680;</span>
+    <h2>7. Future Plan</h2>
+  </div>
+
+  <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; color: var(--emerald);">&#x2705; Recently Shipped</h3>
+  <ul class="icon-list" style="margin-bottom: 2rem;">
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F4CB;</span>
+      <div>
+        <strong>Sprint Batch Processing</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        <code>/jira sprint</code> fetches all active sprint tickets assigned to you or unassigned, filters out done/closed/rejected, and presents a prioritized table. Pick all tickets, specific ones, only yours, or only unassigned &mdash; then process each sequentially through the full pipeline. Between tickets you can continue, skip, or stop. Ends with a sprint summary table.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F4F8;</span>
+      <div>
+        <strong>True Before/After Comparison</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        Playwright captures &ldquo;before&rdquo; screenshots of affected pages before any code changes, then matching &ldquo;after&rdquo; screenshots post-implementation. Generates a side-by-side comparison HTML with red &ldquo;Before&rdquo; and green &ldquo;After&rdquo; labels. The comparison HTML and all screenshots are uploaded to Jira automatically.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F310;</span>
+      <div>
+        <strong>Multi-Stack Support</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        Auto-detects project type from codebase indicators (package.json, *.csproj, pom.xml, go.mod, etc.). Always asks the user for project paths &mdash; supports multi-project setups (Backend: PATH, Frontend: PATH, Database: TYPE). Tailors all agent prompts to the detected stack (C#/.NET, Java/Spring, Python, Go, Rust, C++, PHP, Ruby, and more). Falls back to <code>/project-index</code> skill when detection is unclear.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F3AC;</span>
+      <div>
+        <strong>JAM MCP Integration</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        When a Jira ticket contains jam.dev links, the pipeline automatically fetches full recording data via JAM MCP tools: video analysis with AI-extracted user intents, console error logs, failed network requests, and user interaction timeline. The analysis feeds directly into ticket classification and implementation planning.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F465;</span>
+      <div>
+        <strong>Dynamic Team Fetching</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        <code>/jira teams</code> lists all available Scrum teams fetched live from Jira. <code>/jira sprint</code> now dynamically fetches teams and presents them as selectable options instead of hardcoded team names. Currently finds 13 teams across the FO project.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F6E1;</span>
+      <div>
+        <strong>Mandatory User Path Input</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        The pipeline now always asks the user for project paths before proceeding. It never assumes or auto-detects which codebase a ticket belongs to. This prevents the AI from routing work to the wrong project directory.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F9EA;</span>
+      <div>
+        <strong>Unit Test Engineer</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        <code>/unit-test</code> scans projects for test coverage gaps across any tech stack (Java/JUnit, C#/xUnit, JS/Jest, Python/pytest, Go, Rust, etc.). Three modes: full scan (<code>/unit-test *</code>) maps all existing tests and creates missing ones, single file mode creates tests for a specific class, and project-aware mode resolves project names from prior work. All tests are run and fixed iteratively until green, with a detailed HTML report.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: var(--emerald-light); color: var(--emerald); border: 2px solid var(--emerald-border);">&#x1F50D;</span>
+      <div>
+        <strong>Dependency Health Auditor</strong> <span style="display: inline-block; background: var(--emerald); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;">Implemented!</span><br>
+        <code>/deps</code> scans project dependencies for known CVEs (with exploitability assessment), outdated packages (staleness score), and license compatibility risks. Supports any stack (npm, Maven, Gradle, NuGet, pip, Go, Cargo, Composer, Bundler). Generates a risk-scored health grade (A&ndash;F) and can auto-apply safe updates or export Dependabot/Renovate configs.
+      </div>
+    </li>
+  </ul>
+
+  <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-muted);">&#x1F6A7; Up Next</h3>
+  <ul class="icon-list">
+    <li>
+      <span class="il-icon" style="background: #dbeafe; color: #1e40af;">&#x1F33F;</span>
+      <div>
+        <strong>Git Integration</strong><br>
+        Auto-create feature branches per ticket, auto-commit with ticket reference in the message, create pull requests with generated descriptions. The full ticket-to-PR pipeline.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: #fef3c7; color: #92400e;">&#x1F514;</span>
+      <div>
+        <strong>Slack Notifications</strong><br>
+        Send a message to the team channel when a ticket is resolved, with a link to the HTML report and key screenshots. Keep stakeholders informed without manual updates.
+      </div>
+    </li>
+    <li>
+      <span class="il-icon" style="background: #fff1f2; color: #be123c;">&#x1F6E0;</span>
+      <div>
+        <strong>CI/CD Integration</strong><br>
+        Trigger builds after implementation, verify deployment succeeds, and link the build status back to the Jira ticket. Close the loop from code to production.
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--  ADDITIONAL: TOOLS & SKILLS OVERVIEW       -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="section" id="tools">
+  <div class="section-header">
+    <span class="section-number" style="background: #f1f5f9;">&#x1F6E0;</span>
+    <h2>Appendix: Full Skills Library</h2>
+  </div>
+
+  <p style="color: var(--text-muted); margin-bottom: 1.25rem;">Beyond the core <code>/jira</code> pipeline, the project includes a full suite of development workflow skills:</p>
+
+  <div class="highlight-grid">
+    <div class="highlight-card" style="border-left: 3px solid var(--emerald);">
+      <h4><code>/jira</code></h4>
+      <p>Full ticket orchestrator &mdash; 5 phases from fetch to Jira update, with before/after visual comparison. The core pipeline.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--emerald);">
+      <h4><code>/jira sprint</code></h4>
+      <p>Sprint batch mode &mdash; fetches all active sprint tickets, lets you pick which to process, works through them sequentially with continue/skip/stop controls.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--emerald);">
+      <h4><code>/jira teams</code></h4>
+      <p>Lists all available Scrum teams fetched dynamically from Jira. Shows a numbered table of teams found in the FO project.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--emerald);">
+      <h4><code>/jam</code></h4>
+      <p>Analyzes JAM bug recordings via MCP &mdash; fetches video analysis, console logs, network requests, and user events. Can take a URL, JAM ID, or Jira ticket key as input.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--purple);">
+      <h4><code>/unit-test</code></h4>
+      <p>Scans projects for unit test coverage gaps, creates missing tests, runs and fixes them until green. Supports full scan, single file, project-name resolution, and <code>--fix-ignored</code> mode to rehabilitate disabled tests.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--rose);">
+      <h4><code>/deps</code></h4>
+      <p>Dependency health auditor &mdash; scans for CVEs (with exploitability check), outdated packages (staleness score), and license risks. Health grade A&ndash;F. Can auto-fix or export CI configs.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--emerald);">
+      <h4><code>/tempo</code></h4>
+      <p>Quick time logging. <code>/tempo addTime FO-2872 2h "Bug fix"</code> logs time without leaving the terminal.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--sky);">
+      <h4><code>/new-feature</code></h4>
+      <p>6-phase feature pipeline: plan, screenshot, design in Paper, parallel implementation, code analysis, master report.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--sky);">
+      <h4><code>/code-analysis</code></h4>
+      <p>Reviews only changed code (git diff) for security, logic, quality. Auto-fixes critical issues.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--indigo);">
+      <h4><code>/dev-team</code></h4>
+      <p>5 specialized agents in an iterative loop: scan, fix, test, verify, repeat until zero findings.</p>
+    </div>
+    <div class="highlight-card" style="border-left: 3px solid var(--violet);">
+      <h4><code>/full-pipeline</code></h4>
+      <p>End-to-end delivery: quality loop + Playwright E2E + Docker build/deploy + integration tests + master report.</p>
+    </div>
+  </div>
+</section>
+
+</div><!-- end .container -->
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer class="footer">
+  <div class="footer-brand">Finago &mdash; 24SO ERP</div>
+  Built by B&aring;rd &Oslash;vreb&oslash; &nbsp;&middot;&nbsp; Powered by <strong>Claude Code</strong> &nbsp;&middot;&nbsp; March 2026
+</footer>
+
+</body>
+</html>
