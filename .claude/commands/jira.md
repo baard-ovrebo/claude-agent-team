@@ -420,7 +420,7 @@ Determine:
 
 **MANDATORY — ALWAYS ask the user which project paths to use. NEVER assume or auto-detect.**
 
-The current working directory is the AI orchestration project — it is NOT the codebase for any Jira ticket. The actual code lives in separate project directories that only the user knows. Do NOT scan the current directory or configured working directories to guess the project. Do NOT assume any project path.
+The current working directory (`d:\Kunder\247\AIComp`) is the AI orchestration project — it is NOT the codebase for any Jira ticket. The actual code lives in separate project directories that only the user knows. Do NOT scan the current directory or configured working directories to guess the project. Do NOT assume gateway-backend or any other project path.
 
 **HARD RULE: You MUST ask the user for paths before proceeding. No exceptions. No guessing.**
 
@@ -501,7 +501,114 @@ Options:
 2. **Modify Plan** — I want to adjust the approach
 3. **Just Analyze** — Don't implement, just give me the analysis
 
-If the user says "Proceed", continue to the appropriate phase based on scope.
+If the user says "Proceed", continue to **Step 1.9** (Git Branching) before starting implementation.
+
+### Step 1.9 — Git Branch Setup
+
+**MANDATORY — always ask the user about branching before any code changes are made.**
+
+Ask the user using `AskUserQuestion`:
+
+> "Would you like me to create a new Git branch for this work?"
+
+Options:
+1. **Yes, create branches** — I'll set up branches for all affected projects
+2. **No, work on current branch** — Skip branching, work on whatever branch is checked out
+3. **I'll handle Git myself** — Skip branching entirely, I'll manage Git outside this pipeline
+
+**If the user chooses "Yes, create branches":**
+
+**Step A — For each project path in the PROJECT_MAP, fetch available branches:**
+
+```bash
+cd "{project_path}" && git branch -a --sort=-committerdate | head -20
+```
+
+Also check the current branch:
+```bash
+cd "{project_path}" && git branch --show-current
+```
+
+**Step B — Present branches and ask user to pick the base branch:**
+
+For each project in the PROJECT_MAP, present its branches. If all projects should use the same base branch, consolidate into one question.
+
+Ask using `AskUserQuestion`:
+
+> "Which branch should the new branch be based on?
+>
+> **{Backend project name}** (current: `{current_branch}`):
+> Available branches:
+> 1. `main`
+> 2. `develop`
+> 3. `release/2.4`
+> 4. `feature/FO-2830-auth-refactor`
+> ... {list from git branch output, local + key remotes}
+>
+> **{Frontend project name}** (current: `{current_branch}`):
+> Available branches:
+> 1. `main`
+> 2. `develop`
+> ... {list}
+>
+> Pick a base branch (same for all, or specify per project)."
+
+Options:
+1. **Same base for all** — Use the same branch across all projects (type branch name)
+2. **Different per project** — I'll specify each one
+
+**Step C — Ask for the new branch name:**
+
+Ask using `AskUserQuestion`:
+
+> "What should the new branch be named?
+>
+> Common patterns:
+> - `hotfix/{KEY}` (e.g., `hotfix/FO-2847`)
+> - `feature/{KEY}` (e.g., `feature/FO-2847`)
+> - `bugfix/{KEY}-short-description`
+>
+> Or type any branch name you prefer."
+
+Options:
+1. **hotfix/{KEY}** — Use `hotfix/{KEY}`
+2. **feature/{KEY}** — Use `feature/{KEY}`
+3. **Custom name** — I'll type the branch name
+
+**Step D — Create the branches:**
+
+For each project path in the PROJECT_MAP:
+
+```bash
+cd "{project_path}" && git fetch origin && git checkout {base_branch} && git pull origin {base_branch} && git checkout -b {new_branch_name}
+```
+
+Verify the branch was created:
+```bash
+cd "{project_path}" && git branch --show-current
+```
+
+Report the results:
+```
+Git branches created:
+  Backend ({backend_path}): {new_branch_name} (based on {base_branch})
+  Frontend ({frontend_path}): {new_branch_name} (based on {base_branch})
+```
+
+**If branch creation fails** (e.g., uncommitted changes, branch already exists):
+- If uncommitted changes: ask the user whether to stash, commit, or abort
+- If branch already exists: ask the user whether to check it out, create a different name, or abort
+
+**Step E — Store branch info for later phases:**
+
+Save the branch information so Phase 4 (Jira update) can reference it:
+```
+GIT_BRANCHES:
+  Backend: {new_branch_name} at {backend_path} (based on {base_branch})
+  Frontend: {new_branch_name} at {frontend_path} (based on {base_branch})
+```
+
+**If the user chose "No" or "I'll handle Git myself":** Skip all git operations and proceed to Phase 2.
 
 ---
 
