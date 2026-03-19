@@ -307,6 +307,72 @@ cd "{PROJECT_PATH}" && ls mvnw gradlew 2>/dev/null
 cd "{PROJECT_PATH}" && grep -E "^[a-zA-Z_-]+:" Makefile 2>/dev/null | head -20
 ```
 
+### Step 2.6 — Detect Dependent Repositories
+
+**Search for references to other repositories that this project depends on.**
+
+Check for git submodules:
+```bash
+cd "{PROJECT_PATH}" && cat .gitmodules 2>/dev/null
+```
+
+Check README and documentation for references to other repos:
+```bash
+cd "{PROJECT_PATH}" && grep -rih "git clone\|git@\|github\.com/\|gitlab\.com/\|bitbucket\.org/" README.md CONTRIBUTING.md docs/*.md 2>/dev/null | head -20
+```
+
+Check Docker Compose for images that might be sibling repos:
+```bash
+cd "{PROJECT_PATH}" && grep -E "build:|context:" docker-compose.yml docker-compose.yaml 2>/dev/null | grep -v "^\s*#"
+```
+
+Check package dependencies for local/file references:
+```bash
+# Node.js — file: or link: dependencies
+cd "{PROJECT_PATH}" && python -c "
+import json
+with open('package.json') as f:
+    pkg = json.load(f)
+deps = {**pkg.get('dependencies', {}), **pkg.get('devDependencies', {})}
+for name, ver in deps.items():
+    if ver.startswith('file:') or ver.startswith('link:') or ver.startswith('../'):
+        print(f'Local dep: {name} -> {ver}')
+" 2>/dev/null
+
+# .NET — ProjectReference to other projects
+cd "{PROJECT_PATH}" && grep -rh "ProjectReference" *.csproj **/*.csproj 2>/dev/null | head -10
+
+# Java — multi-module parent pom
+cd "{PROJECT_PATH}" && python -c "
+import xml.etree.ElementTree as ET
+tree = ET.parse('pom.xml')
+ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+modules = tree.findall('.//m:module', ns)
+for m in modules:
+    print('Module:', m.text)
+" 2>/dev/null
+```
+
+Check for API or service references in config files:
+```bash
+cd "{PROJECT_PATH}" && grep -rih "localhost:\|127\.0\.0\.1:" \
+  --include="*.env*" --include="*.yml" --include="*.yaml" --include="*.json" --include="*.properties" \
+  2>/dev/null | grep -v node_modules | sort -u | head -15
+```
+
+**Compile a list of dependent repositories/services:**
+
+```
+DEPENDENT_REPOS:
+  - {repo_name}: {url or path} — {why it's needed, e.g., "backend API this frontend calls"}
+  - {repo_name}: {url or path} — {why}
+
+DEPENDENT_SERVICES:
+  - {service}: port {port} — {what provides it}
+```
+
+**If dependent repos are found**, they will be presented to the user in Phase 3 with an offer to clone and set them up too.
+
 ---
 
 ## PHASE 3: Present Analysis & Setup Plan
@@ -359,9 +425,58 @@ Present a comprehensive analysis to the user:
 
 ### Potential Issues
 - {missing .env.example, unclear setup steps, etc.}
+
+### Dependent Repositories
+{If any were detected in Step 2.6:}
+| Repository | URL/Path | Why Needed | Status |
+|-----------|----------|------------|--------|
+| {name} | {url} | {reason} | Not cloned |
+
+{If none detected: "No dependent repositories detected."}
 ```
 
-### Step 3.2 — Generate Setup Plan
+### Step 3.2a — Offer to Set Up Dependent Repos
+
+**If dependent repositories were detected in Step 2.6**, ask the user:
+
+> "This project depends on {count} other repositories:
+>
+> | # | Repository | Why It's Needed |
+> |---|-----------|----------------|
+> | 1 | {name} ({url}) | {reason} |
+> | 2 | {name} ({url}) | {reason} |
+>
+> Would you like me to clone and set them up too? I'll run the same full setup process for each one."
+
+Options:
+1. **Set up all** — Clone and set up every dependent repo (same full process)
+2. **Select which ones** — I'll pick which repos to set up (type numbers, e.g., "1, 3")
+3. **Skip** — I'll handle dependent repos myself
+4. **I already have them** — They're already on my machine (I'll provide paths)
+
+**If "Set up all" or "Select which ones":**
+
+For each selected repo, ask where to clone it:
+> "Where should I clone {repo_name}? (default: sibling directory `../{repo_name}`)"
+
+Then **recursively run the full setup process** (Phases 1-5) for each dependent repo. Track all repos being set up:
+
+```
+SETUP_QUEUE:
+  1. {main_repo} — {path} (IN PROGRESS)
+  2. {dep_repo_1} — {path} (PENDING)
+  3. {dep_repo_2} — {path} (PENDING)
+```
+
+Process each repo sequentially. After each one completes, report status and continue to the next.
+
+**If "I already have them":**
+Ask for the paths and verify they exist and are correct repos:
+```bash
+cd "{provided_path}" && git remote get-url origin 2>/dev/null && echo "VALID" || echo "NOT_A_REPO"
+```
+
+### Step 3.2b — Generate Setup Plan
 
 Based on the analysis, generate a step-by-step setup plan:
 
@@ -636,60 +751,171 @@ If running, report:
 
 ---
 
-## PHASE 5: Generate Setup Report
+## PHASE 5: Generate Setup Documentation (HTML)
 
-**MANDATORY — always generate a report.**
+**MANDATORY — always generate a comprehensive HTML setup guide.**
 
-Write to `reports/repo-setup-report.md`:
+This is not just a report of what happened — it's a **developer onboarding document** that anyone can follow to get this project running from scratch. It should be self-contained, with every step documented clearly enough that a new team member can follow it without help.
 
-```markdown
-# Repository Setup Report
+Launch a **Report Generator agent**:
 
-**Repository:** {name}
-**URL:** {remote URL}
-**Date:** {current date}
-**Setup status:** {COMPLETE / PARTIAL / ANALYZE-ONLY}
+> You are a **Developer Documentation Lead**. Generate a comprehensive, polished HTML setup guide for a repository.
+>
+> ## Instructions
+>
+> Read all available data:
+> - `reports/repo-setup-report-data.json` (setup results data — written by the orchestrator before launching you)
+> - Any `reports/repo-setup-*.md` files from dependent repo setups
+> - The project's README.md, CONTRIBUTING.md, and CLAUDE.md (if they exist)
+>
+> ## Generate HTML Report
+>
+> Write to `reports/repo-setup-guide.html` — a beautiful, printable HTML document.
+>
+> ### Report Sections
+>
+> **1. Header & Overview**
+> - Project name, repository URL, date generated
+> - One-paragraph description (from README or package.json)
+> - Tech stack summary badges (language, framework, database, test framework)
+> - Setup status: COMPLETE / PARTIAL / ANALYZE-ONLY
+>
+> **2. Prerequisites Checklist**
+> - Every tool needed with version requirements
+> - For each: installed version, required version, install link/command
+> - Checkboxes (HTML) for the developer to mark off as they complete each one
+> - Include OS-specific notes if relevant (Windows/Mac/Linux)
+>
+> **3. Quick Start (TL;DR)**
+> - The minimum commands to get running, in a single copyable code block
+> - Example:
+>   ```
+>   git clone {url}
+>   cd {name}
+>   cp .env.example .env
+>   npm install
+>   npm run dev
+>   ```
+>
+> **4. Step-by-Step Setup Guide**
+> - For EACH step, include:
+>   - What to do (with exact commands in copyable code blocks)
+>   - What you should see (expected output)
+>   - What to do if it fails (troubleshooting tips)
+>   - Screenshot or output sample if available
+> - Steps: Clone, Install Dependencies, Configure Environment, Set Up Database, Run Migrations, Build, Run Tests, Start Dev Server
+>
+> **5. Environment Variables Reference**
+> - Table: variable name, description, required (yes/no), default value, example value
+> - Group by category (database, API keys, feature flags, etc.)
+> - Mark which ones need the user to provide a real value vs. which can use defaults
+>
+> **6. Available Commands Reference**
+> - Table of all available scripts/commands with descriptions
+> - Group by category: development, testing, building, deployment, utilities
+>
+> **7. Project Architecture Overview**
+> - Directory structure tree (top 3 levels, annotated with descriptions)
+> - Key files and what they do
+> - How the project is organized (routes, controllers, services, models, etc.)
+>
+> **8. Dependent Repositories** (if any)
+> - For each dependent repo:
+>   - Name, URL, why it's needed
+>   - Setup status (if we set it up)
+>   - How to connect it to this project (ports, env vars, etc.)
+> - Network diagram showing how services connect (text-based or CSS)
+>
+> **9. Database Setup**
+> - Schema overview (key tables/collections)
+> - How to run migrations
+> - How to seed test data (if available)
+> - How to reset the database
+>
+> **10. Testing Guide**
+> - How to run unit tests, integration tests, E2E tests
+> - Current test status (pass/fail counts from setup)
+> - How to run specific test files or suites
+> - Test coverage info if available
+>
+> **11. Troubleshooting / FAQ**
+> - Common issues encountered during setup (from our setup process)
+> - Solutions that worked
+> - Known issues that remain
+>
+> **12. Next Steps for New Developers**
+> - What to configure first
+> - Suggested first tasks to get familiar with the codebase
+> - Where to find more documentation
+> - Who to ask for help (if mentioned in README/CONTRIBUTING)
+>
+> ### Styling
+> - Clean light theme (white background, system font)
+> - Sticky table of contents sidebar
+> - Copyable code blocks with a "copy" button (JavaScript)
+> - Collapsible sections for detailed troubleshooting
+> - Color-coded status badges (green = done, amber = needs attention, red = failed)
+> - Print-friendly layout
+> - Responsive for reading on any device
+>
+> ### Quality Standards
+> - Every command must be copyable and correct — no placeholder paths left behind
+> - Use the actual project paths, not generic examples
+> - Include the actual output from setup steps where available
+> - The document should be self-sufficient — a developer with zero context should be able to follow it
 
-## Tech Stack
-- Language: {language} {version}
-- Framework: {framework} {version}
-- Database: {database}
-- Package Manager: {pm}
-- Test Framework: {test}
+**Before launching the agent**, write the setup data to a JSON file that the agent will read:
 
-## Setup Steps Completed
-| Step | Status | Notes |
-|------|--------|-------|
-| Clone | {done/skipped} | {branch} |
-| Dependencies | {done/failed/skipped} | {count} packages |
-| Environment | {done/skipped} | {count} vars configured |
-| Database | {done/skipped/not needed} | {type} |
-| Migrations | {done/skipped/not needed} | {count} migrations |
-| Build | {done/failed/skipped} | {time} |
-| Tests | {passed/failed/skipped} | {X} pass, {Y} fail |
-| Dev Server | {running/failed/skipped} | localhost:{port} |
-
-## Environment Variables
-| Variable | Status | Description |
-|----------|--------|-------------|
-| {var} | {configured/needs-value/default} | {desc} |
-
-## Project Structure
-{tree of key directories}
-
-## Available Commands
-| Command | Description |
-|---------|-------------|
-| {cmd} | {desc} |
-
-## Issues Encountered
-{list of any problems and how they were resolved or what remains}
-
-## Next Steps
-- {suggestions for the developer, e.g., "Configure API keys in .env", "Run seed script for test data"}
+```bash
+mkdir -p reports
+cat > reports/repo-setup-report-data.json << 'DATAEOF'
+{
+  "project_name": "{name}",
+  "repo_url": "{remote URL}",
+  "project_path": "{PROJECT_PATH}",
+  "date": "{current date}",
+  "status": "{COMPLETE/PARTIAL/ANALYZE-ONLY}",
+  "stack": {
+    "language": "{language}",
+    "language_version": "{version}",
+    "framework": "{framework}",
+    "framework_version": "{version}",
+    "database": "{database}",
+    "package_manager": "{pm}",
+    "test_framework": "{test}",
+    "build_tool": "{tool}"
+  },
+  "prerequisites": [
+    {"name": "{tool}", "required_version": "{ver}", "installed_version": "{ver}", "status": "{ok/missing}"}
+  ],
+  "steps": [
+    {"name": "Clone", "status": "{done/skipped}", "notes": "{branch}"},
+    {"name": "Dependencies", "status": "{done/failed/skipped}", "notes": "{count} packages", "output": "{key output}"},
+    {"name": "Environment", "status": "{done/skipped}", "notes": "{count} vars"},
+    {"name": "Database", "status": "{done/skipped/not needed}", "notes": "{type}"},
+    {"name": "Migrations", "status": "{done/skipped/not needed}", "notes": ""},
+    {"name": "Build", "status": "{done/failed/skipped}", "notes": "", "output": "{key output}"},
+    {"name": "Tests", "status": "{passed/failed/skipped}", "notes": "{X} pass, {Y} fail"},
+    {"name": "Dev Server", "status": "{running/failed/skipped}", "notes": "localhost:{port}"}
+  ],
+  "env_vars": [
+    {"name": "{var}", "description": "{desc}", "required": true, "default": "{val}", "status": "{configured/needs-value}"}
+  ],
+  "scripts": [
+    {"command": "{cmd}", "description": "{desc}", "category": "{dev/test/build/deploy}"}
+  ],
+  "dependent_repos": [
+    {"name": "{name}", "url": "{url}", "reason": "{why}", "status": "{setup/skipped/not cloned}", "path": "{path}"}
+  ],
+  "issues": ["{issue description}"],
+  "project_structure": "{directory tree string}"
+}
+DATAEOF
 ```
 
 ### Step 5.1 — Present Final Summary
+
+After the report agent completes:
 
 ```
 ## Setup Complete: {repo_name}
@@ -699,12 +925,17 @@ Write to `reports/repo-setup-report.md`:
 **Dev Server:** http://localhost:{port} {running/not started}
 **Tests:** {X} passed, {Y} failed
 
-**Report:** `reports/repo-setup-report.md`
+{If dependent repos were set up:}
+**Dependent repos:** {count} set up ({list})
+
+**Setup Guide:** `reports/repo-setup-guide.html`
 
 {If any issues:}
 **Remaining items:**
 - {what still needs manual attention}
 ```
+
+**If multiple repos were set up**, the HTML guide covers ALL of them in one document — the main repo and all its dependencies, with a section on how they connect to each other.
 
 ---
 
