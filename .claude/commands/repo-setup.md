@@ -19,6 +19,8 @@ You are a **Senior DevOps & Onboarding Engineer**. Your job is to take a Git rep
 | `{org_url}` | **Organization Scan** — analyze ALL repos in a GitHub org/user | `/repo-setup https://github.com/nexum-fo` |
 | `{org_url} --search "{text}"` | **Org Search** — only process repos matching the search text | `/repo-setup https://github.com/nexum-fo --search "Public API"` |
 | `{org_url} --analyze-only` | **Org Scan (report only)** — map the entire org without cloning | `/repo-setup https://github.com/nexum-fo --analyze-only` |
+| `... --gh-user {account}` | **Switch GitHub account** — use a different gh account for API/clone | `/repo-setup https://github.com/nexum-fo --gh-user ext-bard-ovrebo` |
+| `... --local-scan {path}` | **Local Org Scan** — scan repos already on disk instead of cloning | `/repo-setup https://github.com/nexum-fo --local-scan D:\Kunder` |
 | `{local_path}` | **Local Repo** — analyze an already-cloned repo | `/repo-setup D:\Projects\my-app` |
 | *(empty)* | **Current Directory** — analyze the repo in the current working directory | `/repo-setup` |
 
@@ -61,10 +63,140 @@ Extract:
 - `{ORG_NAME}` — the GitHub organization or user name (if org mode)
 - `--analyze-only` — if present, only produce the report, don't install or configure anything
 - `--search "{text}"` — if present, only process repos whose name or description contains this text (case-insensitive). Also checks the repo's README for the search text after cloning.
+- `--gh-user {account}` — if present, switch to this GitHub account before running API calls and cloning. Useful when the default `gh` account doesn't have access to the target org.
+- `--local-scan {path}` — if present, skip cloning entirely and instead scan the local filesystem for repos belonging to this org. Searches the given path recursively for directories containing `.git` with a remote URL matching the org name.
 
 ---
 
 ## PHASE ORG: Organization-Wide Repository Scan
+
+### Org Step 0 — GitHub Account Setup
+
+**MANDATORY — always verify access to the org before proceeding.**
+
+**Step A — Save the current account (so we can restore it later):**
+```bash
+ORIGINAL_GH_USER=$(gh api user --jq '.login' 2>/dev/null)
+echo "Current gh account: $ORIGINAL_GH_USER"
+```
+
+**Step B — Check if current account has access to the target org:**
+```bash
+gh api "orgs/{ORG_NAME}" --jq '.login' 2>&1
+```
+
+**If access succeeds (returns the org name):** Proceed to Org Step 1.
+
+**If access fails (404 or error):** The current account can't reach this org. List all available `gh` accounts and ask the user to pick one:
+
+```bash
+gh auth status 2>&1
+```
+
+This shows all authenticated accounts. Parse the output to build a list of available accounts.
+
+Ask the user using `AskUserQuestion`:
+
+> "Your current GitHub account (`{ORIGINAL_GH_USER}`) doesn't have access to `{ORG_NAME}`.
+>
+> **Available GitHub accounts on this machine:**
+> {numbered list from `gh auth status` output, e.g.:}
+> 1. `baard-ovrebo` (github.com) — currently active
+> 2. `ext-bard-ovrebo` (github.com)
+>
+> Which account should I use to access `{ORG_NAME}`?"
+
+Options:
+1. **{account_1}** — Switch to {account_1}
+2. **{account_2}** — Switch to {account_2}
+... (one option per available account)
+N-2. **Log in with a new account** — I'll authenticate a different account
+N-1. **Scan local repos instead** — Skip GitHub API, scan my disk for repos from this org
+N. **Abort** — Cancel
+
+**If user picks an existing account:**
+```bash
+gh auth switch --user {selected_account} 2>&1
+```
+
+Then verify access:
+```bash
+gh api "orgs/{ORG_NAME}" --jq '.login' 2>&1
+```
+
+If still no access, inform the user and re-ask.
+
+**If user picks "Log in with a new account":**
+```bash
+gh auth login --hostname github.com --web 2>&1
+```
+After login, verify access and proceed.
+
+**If user picks "Scan local repos instead":**
+Ask for the local path and go to **Org Step 0b**.
+
+**IMPORTANT — Restore the original account when done:**
+After ALL org operations are complete (after Phase ORG-REPORT or after setup), switch back:
+```bash
+gh auth switch --user {ORIGINAL_GH_USER} 2>&1
+```
+Inform the user: "Restored GitHub account to `{ORIGINAL_GH_USER}`."
+
+**If `--local-scan {path}` is provided**, skip GitHub API entirely and go to **Org Step 0b**.
+
+### Org Step 0b — Local Filesystem Scan (for `--local-scan`)
+
+**Instead of fetching repos from the GitHub API, find them on disk.**
+
+Search the provided path for Git repositories whose remote URL contains the org name:
+
+```bash
+find "{LOCAL_SCAN_PATH}" -maxdepth 4 -name ".git" -type d 2>/dev/null | while read gitdir; do
+  repo_dir="$(dirname "$gitdir")"
+  remote=$(git -C "$repo_dir" remote get-url origin 2>/dev/null)
+  if echo "$remote" | grep -qi "{ORG_NAME}"; then
+    name=$(basename "$repo_dir")
+    lang=$(ls "$repo_dir"/package.json "$repo_dir"/pom.xml "$repo_dir"/*.csproj "$repo_dir"/go.mod "$repo_dir"/Cargo.toml 2>/dev/null | head -1)
+    branch=$(git -C "$repo_dir" branch --show-current 2>/dev/null)
+    last_commit=$(git -C "$repo_dir" log --oneline -1 2>/dev/null)
+    echo -e "${name}\t${remote}\t${branch}\t${last_commit}\t${repo_dir}"
+  fi
+done
+```
+
+Also try broader matching (some repos may use variations like `tfso`, `24so`, etc.):
+```bash
+find "{LOCAL_SCAN_PATH}" -maxdepth 4 -name ".git" -type d 2>/dev/null | while read gitdir; do
+  repo_dir="$(dirname "$gitdir")"
+  remote=$(git -C "$repo_dir" remote get-url origin 2>/dev/null)
+  echo -e "$(basename "$repo_dir")\t${remote}\t${repo_dir}"
+done | sort
+```
+
+Present all found repos and let the user confirm which belong to the org:
+
+> "Found {count} Git repos under `{LOCAL_SCAN_PATH}`. These appear to belong to `{ORG_NAME}`:
+>
+> | # | Repo | Remote URL | Branch | Path |
+> |---|------|-----------|--------|------|
+> | 1 | {name} | {remote} | {branch} | {path} |
+> | 2 | {name} | {remote} | {branch} | {path} |
+>
+> {If there are repos with ambiguous remotes:}
+> **Possibly related** (different org in URL but might be part of the ecosystem):
+> | # | Repo | Remote URL | Path |
+> |---|------|-----------|------|
+> | {n} | {name} | {remote} | {path} |
+>
+> Which repos should I include in the analysis?"
+
+Options:
+1. **All confirmed** — Include all repos matching `{ORG_NAME}` in their remote URL
+2. **All + possibly related** — Include confirmed and ambiguous repos
+3. **Select specific** — I'll pick by number
+4. **I'll add more paths** — I have repos in other directories too
+
+**After the user confirms**, set the PROJECT_PATH for each repo to its local path (no cloning needed) and **skip Org Step 3** (cloning). Go directly to **Org Step 4** (analyze each repo).
 
 **Entered when the user provides a GitHub org/user URL like `https://github.com/nexum-fo`.**
 
