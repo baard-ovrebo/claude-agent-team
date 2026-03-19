@@ -573,6 +573,32 @@ mkdir -p reports/jira-attachments
 source .env && curl -s -L -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" "${JIRA_BASE_URL}/rest/api/3/attachment/content/{attachment_id}" -o "reports/jira-attachments/{filename}"
 ```
 
+**MANDATORY — Resize images before reading them.** Claude has a 2000px dimension limit for multi-image requests. After downloading ALL image attachments, resize any that exceed this limit:
+
+```bash
+python -c "
+from PIL import Image
+import glob, os
+
+MAX_DIM = 1600  # Stay well under 2000px limit for multi-image safety
+
+for img_path in glob.glob('reports/jira-attachments/*.png') + glob.glob('reports/jira-attachments/*.jpg') + glob.glob('reports/jira-attachments/*.jpeg'):
+    try:
+        img = Image.open(img_path)
+        w, h = img.size
+        if w > MAX_DIM or h > MAX_DIM:
+            ratio = min(MAX_DIM / w, MAX_DIM / h)
+            new_w, new_h = int(w * ratio), int(h * ratio)
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+            img.save(img_path)
+            print(f'Resized: {os.path.basename(img_path)} ({w}x{h} -> {new_w}x{new_h})')
+        else:
+            print(f'OK: {os.path.basename(img_path)} ({w}x{h})')
+    except Exception as e:
+        print(f'Skip: {os.path.basename(img_path)} ({e})')
+"
+```
+
 Read any image attachments using the Read tool to visually inspect them — these often contain screenshots showing the bug or expected behavior.
 
 ### Step 1.3b — Detect and Analyze JAM Links
