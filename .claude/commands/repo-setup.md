@@ -17,6 +17,7 @@ You are a **Senior DevOps & Onboarding Engineer**. Your job is to take a Git rep
 | `{repo_uri}` | **Full Setup** — clone, analyze, and set up | `/repo-setup https://github.com/org/project.git` |
 | `{repo_uri} --analyze-only` | **Analyze Only** — clone and report, don't install anything | `/repo-setup git@github.com:org/project.git --analyze-only` |
 | `{org_url}` | **Organization Scan** — analyze ALL repos in a GitHub org/user | `/repo-setup https://github.com/nexum-fo` |
+| `{org_url} --search "{text}"` | **Org Search** — only process repos matching the search text | `/repo-setup https://github.com/nexum-fo --search "Public API"` |
 | `{org_url} --analyze-only` | **Org Scan (report only)** — map the entire org without cloning | `/repo-setup https://github.com/nexum-fo --analyze-only` |
 | `{local_path}` | **Local Repo** — analyze an already-cloned repo | `/repo-setup D:\Projects\my-app` |
 | *(empty)* | **Current Directory** — analyze the repo in the current working directory | `/repo-setup` |
@@ -59,6 +60,7 @@ Extract:
 - `{REPO_URI}` — the Git URI (HTTPS or SSH) or local path
 - `{ORG_NAME}` — the GitHub organization or user name (if org mode)
 - `--analyze-only` — if present, only produce the report, don't install or configure anything
+- `--search "{text}"` — if present, only process repos whose name or description contains this text (case-insensitive). Also checks the repo's README for the search text after cloning.
 
 ---
 
@@ -97,9 +99,85 @@ ORG_REPOS:
     size_kb: {size}
 ```
 
+### Org Step 1b — Filter by Search (if `--search` provided)
+
+**If the `--search "{text}"` flag is present**, filter the repo list before presenting it.
+
+**Phase 1 — Quick filter on name, description, and topics (no cloning needed):**
+
+```bash
+python -c "
+import sys
+search = '{SEARCH_TEXT}'.lower()
+# ORG_REPOS data is already parsed — filter it
+# Match repos where search text appears in:
+# - repo name (case-insensitive)
+# - repo description (case-insensitive)
+# - repo topics (case-insensitive)
+filtered = []
+for repo in ORG_REPOS:
+    name_match = search in repo['name'].lower()
+    desc_match = search in repo['description'].lower()
+    topic_match = any(search in t.lower() for t in repo.get('topics', []))
+    if name_match or desc_match or topic_match:
+        repo['match_reason'] = []
+        if name_match: repo['match_reason'].append('name')
+        if desc_match: repo['match_reason'].append('description')
+        if topic_match: repo['match_reason'].append('topics')
+        filtered.append(repo)
+"
+```
+
+In practice, iterate through the fetched repo list and check each:
+- Does `{SEARCH_TEXT}` appear in the repo **name**? (case-insensitive)
+- Does `{SEARCH_TEXT}` appear in the repo **description**? (case-insensitive)
+- Does `{SEARCH_TEXT}` appear in any of the repo **topics**? (case-insensitive)
+
+**Phase 2 — Deep filter on README content (requires fetching each repo's README):**
+
+For repos that did NOT match in Phase 1, check their README via the API:
+
+```bash
+gh api "repos/{ORG_NAME}/{repo_name}/readme" --jq '.content' 2>/dev/null | base64 -d 2>/dev/null | grep -i "{SEARCH_TEXT}" > /dev/null && echo "MATCH:{repo_name}" || echo "NO_MATCH:{repo_name}"
+```
+
+Or batch fetch with the search API:
+```bash
+gh api "search/code?q={SEARCH_TEXT}+org:{ORG_NAME}+filename:README" --jq '.items[] | .repository.name' 2>/dev/null | sort -u
+```
+
+Combine Phase 1 and Phase 2 matches. For each matched repo, record WHY it matched:
+
+```
+FILTERED_REPOS:
+  - {repo_name}: matched in {name/description/topics/README}
+  - {repo_name}: matched in {name/description/topics/README}
+
+EXCLUDED_REPOS: (repos that did NOT match the search)
+  - {repo_name}
+  - {repo_name}
+```
+
+Report the filtering results:
+> "Search filter `{SEARCH_TEXT}` matched **{count}** of {total} repos:
+>
+> | # | Repository | Matched In | Description |
+> |---|-----------|-----------|-------------|
+> | 1 | {name} | name, README | {desc} |
+> | 2 | {name} | description | {desc} |
+>
+> **Excluded:** {count} repos did not match."
+
+**Replace ORG_REPOS with FILTERED_REPOS** for all subsequent steps. Only the matched repos will be cloned, analyzed, and documented.
+
+**If zero repos match**, inform the user:
+> "No repositories matched the search `{SEARCH_TEXT}` in {ORG_NAME}. Try a broader search term or check the full inventory with `/repo-setup {org_url}` (without --search)."
+
+**If no `--search` flag:** Skip this step entirely — process all repos as before.
+
 ### Org Step 2 — Present Repository Inventory
 
-Present all discovered repos:
+Present all discovered repos (or filtered repos if `--search` was used):
 
 ```
 ## Organization: {ORG_NAME}
