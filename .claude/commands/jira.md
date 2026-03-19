@@ -258,6 +258,8 @@ Parse and extract these fields from the response:
 - **Status**: `fields.status.name`
 - **Assignee**: `fields.assignee.displayName`
 - **Reporter**: `fields.reporter.displayName` / `fields.creator.displayName`
+- **Reporter Account ID**: `fields.reporter.accountId` — needed for @mentions in comments
+- **Creator Account ID**: `fields.creator.accountId` — fallback if reporter differs from creator
 - **Sprint**: `fields.customfield_10020[0].name`
 - **Epic**: `fields.parent.key` + `fields.parent.fields.summary`
 - **Scrum Team**: `fields.customfield_10477.value`
@@ -398,6 +400,121 @@ Present a clear, formatted summary of the ticket to the user:
 {list of downloaded files}
 ```
 
+### Step 1.4b — Analyze Comments for Context & Unanswered Questions
+
+**MANDATORY — always analyze the ticket comments carefully before proceeding.**
+
+Review ALL comments chronologically and extract:
+
+1. **Additional requirements** — any details, clarifications, or scope changes added after the original description. These MUST be incorporated into the implementation plan. A comment saying "also fix the mobile view" or "the API should also accept XML" is a requirement, not a suggestion.
+
+2. **Questions asked by the reporter or others** — look for:
+   - Direct questions (sentences ending with `?`)
+   - Requests for clarification ("can you also...", "what about...", "should this...")
+   - Open discussion ("I think we should...", "another option would be...")
+
+3. **Answers already provided** — if a question was asked and someone replied, note the resolution.
+
+4. **Latest context** — the most recent comments often contain the most up-to-date understanding of the issue. If the description says one thing but a recent comment says another, the comment takes precedence.
+
+**Present comment analysis in the ticket summary:**
+```
+### Comment Analysis
+- Additional requirements from comments: {list, or "none"}
+- Unanswered questions: {list, or "none"}
+- Latest context: {summary of most recent relevant comment}
+```
+
+**If there are unanswered questions that block implementation**, or if the ticket description is too vague to implement confidently, ask the user using `AskUserQuestion`:
+
+> "The ticket has unclear or missing information that I need before I can implement this:
+>
+> **Unanswered questions in comments:**
+> - {question from comment, with author and date}
+>
+> **Information I need:**
+> - {what's missing, e.g., "Which API endpoint should be called?", "What should happen on error?"}
+>
+> How should I handle this?"
+
+Options:
+1. **Ask the reporter on Jira** — Post a comment on the ticket mentioning the reporter, asking for clarification
+2. **I'll clarify now** — I'll answer the questions here (use the text box)
+3. **Proceed with assumptions** — Make reasonable assumptions and document them in the report
+4. **Skip this ticket** — Move on, this needs more info before implementation
+
+**If the user chooses "Ask the reporter on Jira":**
+
+Post a comment on the ticket that @mentions the reporter. The comment is posted as the authenticated user (the person running the pipeline — the assignee).
+
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}/comment" \
+  -d '{
+    "body": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "mention",
+              "attrs": {
+                "id": "{reporter_account_id}",
+                "text": "@{reporter_display_name}",
+                "accessLevel": ""
+              }
+            },
+            {
+              "type": "text",
+              "text": " Hi! I'\''m looking into this ticket and have a few questions before I can proceed:"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "{question_1}"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Thanks! — {assignee_name}"
+            }
+          ]
+        }
+      ]
+    }
+  }'
+```
+
+After posting, inform the user:
+> "Question posted on {KEY} mentioning @{reporter_name}. You'll be notified when they reply. Moving on for now — you can re-run `/jira {KEY}` after they respond."
+
+Then stop processing this ticket (or continue to the next ticket in sprint mode).
+
+**If the user chooses "Proceed with assumptions":**
+Document all assumptions clearly. These will be included in the implementation report and the Jira comment so the reporter can validate them.
+
 ### Step 1.5 — Classify the Work
 
 Based on the ticket type, description, comments, and attachments, classify the work needed:
@@ -429,8 +546,8 @@ Ask using `AskUserQuestion`:
 > "Which project(s) should I work with for ticket {KEY}?
 >
 > Please provide the paths, e.g.:
-> - Backend: /path/to/your/projects/control-backend-api
-> - Frontend: /path/to/your/projects/control-frontend
+> - Backend: D:\Kunder\247\Finago\control-backend-api
+> - Frontend: D:\Kunder\247\Finago\control-frontend
 > - Database: SQL Server / PostgreSQL / Supabase (if relevant)"
 
 Options:
