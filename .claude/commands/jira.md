@@ -12,6 +12,8 @@ You are the **Jira Ticket Orchestrator** — a senior technical lead who takes a
 
 - If `$ARGUMENTS` is `teams` → Go to **TEAMS MODE** (below)
 - If `$ARGUMENTS` is `sprint` → Go to **SPRINT MODE** (below)
+- If `$ARGUMENTS` starts with `watch` (e.g., `watch FO-2847`) → Go to **WATCH MODE** (below)
+- If `$ARGUMENTS` starts with `resume` (e.g., `resume FO-2847`) → Go to **RESUME MODE** (below)
 - If `$ARGUMENTS` is a ticket key like `FO-2847` → Go to **PHASE 1** (single ticket mode)
 
 ---
@@ -222,6 +224,296 @@ After all selected tickets are processed (or the user stops), present a sprint s
 **Total time logged:** {sum}
 **Reports generated:** {list of report files}
 ```
+
+---
+
+## WATCH MODE — Monitor Ticket for Replies
+
+**Entered via `/jira watch FO-2847` or automatically when the pipeline posts a question and the user chooses "Watch for reply".**
+
+### Watch Step 1 — Initialize
+
+Read the ticket key from arguments. Check if a state file exists:
+```bash
+ls reports/jira-state-{KEY}.json 2>/dev/null && echo "STATE_EXISTS" || echo "NO_STATE"
+```
+
+If state exists, read it to understand what the pipeline was waiting for:
+```bash
+cat reports/jira-state-{KEY}.json
+```
+
+Record the current comment count as the baseline:
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}?fields=comment" | python -c "
+import json, sys
+data = json.load(sys.stdin)
+comments = data.get('fields', {}).get('comment', {}).get('comments', [])
+print(len(comments))
+"
+```
+
+Store this as `{BASELINE_COMMENT_COUNT}`.
+
+Inform the user:
+> "Watching ticket {KEY} for new comments. Polling every 2 minutes. I'll notify you when someone replies.
+> Press Ctrl+C to stop watching."
+
+### Watch Step 2 — Poll Loop
+
+**Every 2 minutes**, check for new comments:
+
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}?fields=comment" | python -c "
+import json, sys
+data = json.load(sys.stdin)
+comments = data.get('fields', {}).get('comment', {}).get('comments', [])
+print('COUNT:' + str(len(comments)))
+if len(comments) > 0:
+    last = comments[-1]
+    author = last.get('author', {}).get('displayName', 'Unknown')
+    account_id = last.get('author', {}).get('accountId', '')
+    created = last.get('created', '')[:16]
+    # Extract text from ADF body
+    def extract_text(node):
+        t = ''
+        if isinstance(node, dict):
+            if node.get('type') == 'text':
+                t += node.get('text', '')
+            for c in node.get('content', []):
+                t += extract_text(c)
+        return t
+    body_text = extract_text(last.get('body', {}))
+    print('AUTHOR:' + author)
+    print('ACCOUNT_ID:' + account_id)
+    print('DATE:' + created)
+    print('BODY:' + body_text[:500])
+"
+```
+
+**If comment count > BASELINE_COMMENT_COUNT:**
+
+A new comment was detected. Parse it and determine what kind of comment it is:
+
+1. **Reply to our question** — the reporter or someone else answered the question we asked
+2. **New unrelated comment** — someone added context, a note, or an unrelated update
+3. **Our own comment** — ignore comments from the authenticated user (that's us)
+
+Check if the new comment is from our own account:
+```bash
+source .env && echo "${JIRA_EMAIL}"
+```
+If the comment author's accountId matches the authenticated user, ignore it and continue polling.
+
+**If it's a genuine new comment from someone else:**
+
+Update the baseline count and notify the user:
+
+> "New comment on {KEY} from **{author}** ({date}):
+>
+> *{comment_body}*"
+
+### Watch Step 3 — Decide What To Do With the New Comment
+
+Analyze the new comment in the context of what was being waited for (from the state file):
+
+**If the pipeline was waiting for an answer to a specific question:**
+- Does the comment answer the question? Parse the comment and compare to what was asked.
+- If **yes** — the answer is here, proceed to resume the pipeline (Watch Step 4).
+- If **partially** — some questions answered, some not. Report what's answered and what's still missing.
+- If **no** — the comment is unrelated or asks a counter-question.
+
+**If the comment asks a counter-question or requests more info from us:**
+
+Present it to the user:
+> "The reporter asked a follow-up question:
+>
+> *{comment_body}*
+>
+> How should I respond?"
+
+Options:
+1. **I'll answer now** — Type the response (use text box), I'll post it on Jira and keep watching
+2. **Let the AI answer** — Based on what I know about the ticket, I'll draft a response for your approval
+3. **Stop watching** — I'll handle this manually
+
+**If "Let the AI answer":**
+Draft a response based on the ticket context, the original question, and the follow-up. Present the draft to the user for approval before posting. After posting, update the baseline count and continue the watch loop.
+
+**If "I'll answer now":**
+Post the user's response as a Jira comment:
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  -X POST -H "Content-Type: application/json" \
+  "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}/comment" \
+  -d '{
+    "body": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "mention",
+              "attrs": {
+                "id": "{reporter_account_id}",
+                "text": "@{reporter_display_name}",
+                "accessLevel": ""
+              }
+            },
+            {
+              "type": "text",
+              "text": " {user_response}"
+            }
+          ]
+        }
+      ]
+    }
+  }'
+```
+
+Update baseline count and continue watching for the next reply.
+
+### Watch Step 4 — Auto-Resume Pipeline
+
+When a satisfactory answer is received:
+
+1. Read the state file to know where the pipeline was paused
+2. Incorporate the new comment(s) into the ticket context
+3. Inform the user:
+   > "Answer received from {author}. Resuming pipeline for {KEY} from {paused_phase}."
+4. Continue the pipeline from the paused phase — go to the step saved in the state file
+
+**The pipeline now has the full context**: original ticket + all comments (including the new answer) + the state from where it paused. It continues as if it never stopped.
+
+**If the resumed pipeline encounters another question or blocker**, it can post another question, save state, and re-enter the watch loop. This back-and-forth continues until the ticket is fully resolved.
+
+---
+
+## RESUME MODE — Resume a Paused Ticket
+
+**Entered via `/jira resume FO-2847`. For resuming work from a new session when state was saved earlier.**
+
+### Resume Step 1 — Load State
+
+```bash
+cat reports/jira-state-{KEY}.json
+```
+
+If no state file exists:
+> "No saved state found for {KEY}. Running the full pipeline instead."
+Then go to **PHASE 1** with the ticket key.
+
+### Resume Step 2 — Fetch Fresh Ticket Data
+
+Re-fetch the ticket to get any new comments, status changes, or updates since the pipeline was paused:
+
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}?expand=renderedFields" | python -m json.tool > /tmp/jira-ticket.json
+```
+
+### Resume Step 3 — Diff Comments
+
+Compare the comments in the fresh ticket data against the `last_comment_count` in the state file. Extract all new comments:
+
+```bash
+python -c "
+import json
+with open('/tmp/jira-ticket.json') as f:
+    data = json.load(f)
+with open('reports/jira-state-{KEY}.json') as f:
+    state = json.load(f)
+
+comments = data.get('fields', {}).get('comment', {}).get('comments', [])
+old_count = state.get('last_comment_count', 0)
+new_comments = comments[old_count:]
+
+for c in new_comments:
+    author = c.get('author', {}).get('displayName', 'Unknown')
+    created = c.get('created', '')[:16]
+    def extract_text(node):
+        t = ''
+        if isinstance(node, dict):
+            if node.get('type') == 'text':
+                t += node.get('text', '')
+            for c2 in node.get('content', []):
+                t += extract_text(c2)
+        return t
+    body = extract_text(c.get('body', {}))
+    print(f'[{created}] {author}: {body[:200]}')
+"
+```
+
+### Resume Step 4 — Present Context and Continue
+
+Present what happened since the pause:
+
+> "Resuming ticket {KEY} from {paused_phase}.
+>
+> **Paused because:** {reason from state file}
+> **Questions asked:** {from state file}
+>
+> **New comments since pause:**
+> - {author} ({date}): {comment text}
+>
+> **Original context:** {summary from state file}"
+
+Analyze the new comments (same logic as Step 1.4b) to determine if the questions were answered.
+
+If answered: continue the pipeline from the paused phase.
+If not answered: ask the user how to proceed (same options as Step 1.4b).
+
+### Resume Step 5 — Clean Up State
+
+After the pipeline completes successfully (reaches Phase 5), delete the state file:
+```bash
+rm -f reports/jira-state-{KEY}.json
+```
+
+---
+
+## SAVE STATE — Pipeline State Persistence
+
+**Called whenever the pipeline needs to pause (waiting for reply, user chose "come back later", etc.).**
+
+Write the current pipeline state to a JSON file:
+
+```bash
+cat > reports/jira-state-{KEY}.json << 'STATEEOF'
+{
+  "ticket_key": "{KEY}",
+  "ticket_summary": "{summary}",
+  "paused_at": "{ISO 8601 timestamp}",
+  "paused_phase": "{phase name, e.g., 'Step 1.4b - Waiting for reporter reply'}",
+  "paused_reason": "{why it paused, e.g., 'Posted question about API endpoint format'}",
+  "questions_asked": [
+    "{question 1}",
+    "{question 2}"
+  ],
+  "last_comment_count": {number of comments when state was saved},
+  "reporter": {
+    "displayName": "{name}",
+    "accountId": "{id}"
+  },
+  "project_map": {
+    "backend": "{path}",
+    "frontend": "{path}"
+  },
+  "stack_profile": "{stack summary}",
+  "classification": "{scope}",
+  "git_branches": {
+    "backend": "{branch_name}",
+    "frontend": "{branch_name}"
+  },
+  "design_approved": {true/false/null},
+  "plan_approved": {true/false},
+  "assumptions": ["{any assumptions made so far}"]
+}
+STATEEOF
+```
+
+This state file contains everything needed to resume the pipeline in a new session without re-asking the user for project paths, branch names, or plan approval.
 
 ---
 
@@ -507,10 +799,20 @@ source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
   }'
 ```
 
-After posting, inform the user:
-> "Question posted on {KEY} mentioning @{reporter_name}. You'll be notified when they reply. Moving on for now — you can re-run `/jira {KEY}` after they respond."
+After posting, save the pipeline state (see **SAVE STATE** below) and ask the user:
 
-Then stop processing this ticket (or continue to the next ticket in sprint mode).
+> "Question posted on {KEY} mentioning @{reporter_name}. What would you like to do while waiting?"
+
+Options:
+1. **Watch for reply** — I'll poll the ticket every 2 minutes and automatically resume when they respond
+2. **I'll come back later** — Save state, I'll run `/jira resume {KEY}` when ready
+3. **Move to next ticket** — (sprint mode only) Continue with the next ticket, come back to this one later
+
+**If "Watch for reply":** Enter the **WATCH LOOP** (see below). The pipeline stays alive, polls for new comments, and automatically resumes when the reporter replies.
+
+**If "I'll come back later":** Save state and stop. The user can run `/jira resume {KEY}` in a new session to pick up where they left off.
+
+**If "Move to next ticket":** Save state and continue to the next ticket in the sprint batch. The user can resume this ticket later with `/jira resume {KEY}`.
 
 **If the user chooses "Proceed with assumptions":**
 Document all assumptions clearly. These will be included in the implementation report and the Jira comment so the reporter can validate them.
