@@ -16,12 +16,374 @@ You are a **Senior DevOps & Onboarding Engineer**. Your job is to take a Git rep
 |---|---|---|
 | `{repo_uri}` | **Full Setup** — clone, analyze, and set up | `/repo-setup https://github.com/org/project.git` |
 | `{repo_uri} --analyze-only` | **Analyze Only** — clone and report, don't install anything | `/repo-setup git@github.com:org/project.git --analyze-only` |
+| `{org_url}` | **Organization Scan** — analyze ALL repos in a GitHub org/user | `/repo-setup https://github.com/nexum-fo` |
+| `{org_url} --analyze-only` | **Org Scan (report only)** — map the entire org without cloning | `/repo-setup https://github.com/nexum-fo --analyze-only` |
 | `{local_path}` | **Local Repo** — analyze an already-cloned repo | `/repo-setup D:\Projects\my-app` |
 | *(empty)* | **Current Directory** — analyze the repo in the current working directory | `/repo-setup` |
 
+### Detect Mode
+
+**Step 1: Determine if the argument is an org/user URL or a single repo.**
+
+Check if the URL points to a GitHub organization or user page (NOT a specific repository):
+- `https://github.com/{org}` — no repo name after the org → **Organization Scan mode**
+- `https://github.com/{org}/{repo}` — has a repo name → **Single repo mode**
+- `https://github.com/{org}/{repo}.git` — explicit git URI → **Single repo mode**
+
+To detect programmatically:
+```bash
+echo "{ARGUMENT}" | python -c "
+import sys, re
+url = sys.stdin.read().strip()
+# Match GitHub org/user URL without a specific repo
+org_match = re.match(r'https?://github\.com/([^/]+)/?$', url)
+# Match GitHub repo URL
+repo_match = re.match(r'https?://github\.com/([^/]+)/([^/]+)', url)
+if org_match:
+    print('MODE:ORG')
+    print('ORG:' + org_match.group(1))
+elif repo_match:
+    print('MODE:REPO')
+    print('ORG:' + repo_match.group(1))
+    print('REPO:' + repo_match.group(2).replace('.git',''))
+else:
+    print('MODE:LOCAL')
+"
+```
+
+- If **MODE:ORG** → Go to **PHASE ORG** (Organization Scan)
+- If **MODE:REPO** → Go to **PHASE 1** (Single Repo Setup, as before)
+- If **MODE:LOCAL** → Go to **PHASE 1** with the local path
+
 Extract:
 - `{REPO_URI}` — the Git URI (HTTPS or SSH) or local path
+- `{ORG_NAME}` — the GitHub organization or user name (if org mode)
 - `--analyze-only` — if present, only produce the report, don't install or configure anything
+
+---
+
+## PHASE ORG: Organization-Wide Repository Scan
+
+**Entered when the user provides a GitHub org/user URL like `https://github.com/nexum-fo`.**
+
+This phase maps the ENTIRE organization: all repositories, how they relate to each other, their tech stacks, and how to get them all running locally.
+
+### Org Step 1 — Fetch All Repositories
+
+Use the GitHub API to list all repositories in the org:
+
+```bash
+gh api "orgs/{ORG_NAME}/repos?per_page=100&sort=updated&type=all" --paginate --jq '.[] | [.name, .description // "No description", .language // "Unknown", .default_branch, .archived, .private, .updated_at[:10], .html_url, .clone_url, .topics // [] | join(","), .size] | @tsv' 2>/dev/null
+```
+
+If that fails (not an org, might be a user):
+```bash
+gh api "users/{ORG_NAME}/repos?per_page=100&sort=updated&type=all" --paginate --jq '.[] | [.name, .description // "No description", .language // "Unknown", .default_branch, .archived, .private, .updated_at[:10], .html_url, .clone_url, .topics // [] | join(","), .size] | @tsv' 2>/dev/null
+```
+
+Parse results into a structured list:
+```
+ORG_REPOS:
+  - name: {repo_name}
+    description: {desc}
+    language: {primary language}
+    default_branch: {branch}
+    archived: {true/false}
+    private: {true/false}
+    last_updated: {date}
+    url: {html_url}
+    clone_url: {clone_url}
+    topics: [{topics}]
+    size_kb: {size}
+```
+
+### Org Step 2 — Present Repository Inventory
+
+Present all discovered repos:
+
+```
+## Organization: {ORG_NAME}
+
+Found {count} repositories ({active} active, {archived} archived):
+
+| # | Repository | Language | Description | Last Updated | Size | Topics |
+|---|-----------|----------|-------------|-------------|------|--------|
+| 1 | {name} | {lang} | {desc} | {date} | {size} | {topics} |
+| 2 | {name} | {lang} | {desc} | {date} | {size} | {topics} |
+...
+
+Archived: {list of archived repos, shown separately}
+```
+
+Ask the user:
+
+> "I found {count} repositories in {ORG_NAME}. How would you like to proceed?"
+
+Options:
+1. **Analyze all** — Clone and analyze every active repo (may take a while for large orgs)
+2. **Select repos** — I'll pick which ones to analyze (type numbers, e.g., "1, 3, 5-8")
+3. **Active only** — Analyze all non-archived repos
+4. **Just the inventory** — I only needed the list, don't clone anything
+
+### Org Step 3 — Clone Selected Repositories
+
+Ask the user for a parent directory:
+
+> "Where should I clone the repos? I'll create a subfolder for each one."
+
+Options:
+1. **Default** — Clone all into `./{ORG_NAME}/` (creates a folder per repo)
+2. **I'll specify** — Let me provide a parent path
+
+For each selected repo:
+```bash
+mkdir -p "{parent_dir}/{ORG_NAME}"
+cd "{parent_dir}/{ORG_NAME}" && git clone "{clone_url}" 2>&1
+```
+
+Track progress:
+```
+Cloning: [{current}/{total}] {repo_name}...
+```
+
+### Org Step 4 — Analyze Each Repository
+
+For each cloned repo, run a **lightweight analysis** (not the full Phase 1-5 setup — just detection):
+
+```bash
+cd "{repo_path}" && echo "=== $(basename $(pwd)) ===" && \
+  ls package.json pom.xml build.gradle *.csproj *.sln requirements.txt go.mod Cargo.toml composer.json Gemfile Dockerfile docker-compose.yml .env.example 2>/dev/null && \
+  echo "---" && \
+  cat README.md 2>/dev/null | head -5
+```
+
+For each repo, extract:
+- Tech stack (language, framework, database)
+- Available scripts/commands
+- Dependencies on OTHER repos in the org (cross-references)
+- Ports used (for services that listen on localhost)
+- Environment variables needed
+- Docker setup available (yes/no)
+
+### Org Step 5 — Detect Inter-Repository Relationships
+
+**This is the key step — map how repos connect to each other.**
+
+For each repo, search for references to other repos in the org:
+
+```bash
+cd "{repo_path}" && grep -rih "{other_repo_name}\|{other_repo_name_variations}" \
+  --include="*.json" --include="*.yml" --include="*.yaml" --include="*.md" \
+  --include="*.env*" --include="*.properties" --include="*.xml" --include="*.gradle" \
+  --include="*.cs" --include="*.java" --include="*.ts" --include="*.js" \
+  --include="*.py" --include="*.go" \
+  2>/dev/null | grep -v node_modules | grep -v ".git/" | head -10
+```
+
+Also check:
+- **Docker Compose** references to other services (image names, build contexts, depends_on)
+- **API base URLs** that point to other services in the org
+- **Package dependencies** that reference org packages (e.g., `@nexum-fo/shared-lib`)
+- **Import paths** that reference other repos (Go modules, npm scopes, Maven group IDs)
+- **Git submodules** pointing to other org repos
+- **CI/CD pipelines** that trigger or depend on other repos
+
+Classify each relationship:
+
+| Relationship Type | Description |
+|---|---|
+| **depends-on** | This repo imports code or calls APIs from another |
+| **depended-by** | Another repo imports code or calls APIs from this one |
+| **shares-data** | Both repos read/write the same database or message queue |
+| **deploys-with** | Repos are deployed together (Docker Compose, K8s) |
+| **shared-library** | A library/package consumed by multiple repos |
+| **gateway/proxy** | Routes traffic to other services |
+| **frontend-for** | UI that consumes an API from another repo |
+| **config/infra** | Infrastructure, configuration, or deployment scripts |
+
+Build a relationship map:
+```
+RELATIONSHIPS:
+  - {repo_a} --depends-on--> {repo_b} (reason: "imports @nexum-fo/shared-types")
+  - {repo_c} --frontend-for--> {repo_a} (reason: "API base URL points to port 3001")
+  - {repo_d} --shares-data--> {repo_a} (reason: "same PostgreSQL database in docker-compose")
+  - {repo_e} --shared-library--> [{repo_a}, {repo_c}] (reason: "npm package used by both")
+```
+
+### Org Step 6 — Determine Startup Order
+
+Based on the relationship map, calculate the correct startup order:
+
+1. **Infrastructure first** — databases, message queues, config services
+2. **Shared libraries** — packages that other repos depend on (need to be built first)
+3. **Backend services** — APIs and services
+4. **Frontend apps** — UIs that consume the backends
+5. **Gateways/proxies** — route traffic to services
+6. **Workers/jobs** — background processors
+
+```
+STARTUP_ORDER:
+  1. {repo_name} (database / infrastructure)
+  2. {repo_name} (shared library — build first)
+  3. {repo_name} (backend API — port 3001)
+  4. {repo_name} (backend API — port 3002)
+  5. {repo_name} (frontend — port 3000, depends on #3 and #4)
+  6. {repo_name} (gateway — port 8080, routes to #3 and #4)
+```
+
+### Org Step 7 — Ask About Full Setup
+
+> "I've analyzed {count} repositories and mapped their relationships. Would you like me to set up the development environment?"
+
+Options:
+1. **Full setup (all repos)** — Install dependencies, configure env, start all services in order
+2. **Select which to set up** — I'll pick specific repos
+3. **Just the documentation** — Generate the HTML guide only, I'll set up manually
+4. **Setup specific stack** — Only set up what I need for {frontend/backend/full-stack} development
+
+**If the user chooses setup:** Run the full Phase 4 (Execute Setup) for each repo in the calculated startup order. For each repo, run the same process: install deps, configure env, database, build, test, start.
+
+After all repos are set up, verify cross-service connectivity:
+```bash
+# For each service, verify it can reach its dependencies
+curl -s -o /dev/null -w "%{http_code}" http://localhost:{port}/health 2>/dev/null
+```
+
+---
+
+## PHASE ORG-REPORT: Generate Organization Documentation (HTML)
+
+**MANDATORY for org mode — always generate this comprehensive document.**
+
+Launch a **Report Generator agent**:
+
+> You are a **Technical Documentation Architect**. Generate a comprehensive HTML documentation site for an entire GitHub organization's codebase.
+>
+> ## Instructions
+>
+> Read `reports/org-scan-data.json` (written by the orchestrator) containing all repo analyses, relationships, and setup results.
+>
+> ## Generate HTML Report
+>
+> Write to `reports/org-documentation.html` — a polished, comprehensive documentation site.
+>
+> ### Report Sections
+>
+> **1. Title Page & Table of Contents**
+> - Organization name, URL, scan date
+> - Total repos, languages, services
+> - Auto-generated clickable table of contents for every section
+> - Summary statistics dashboard
+>
+> **2. Organization Overview**
+> - One-paragraph description of what this org builds
+> - Key statistics: repos, languages used, total contributors, most active repos
+> - Tech stack summary across all repos (pie chart or bar using CSS)
+>
+> **3. Architecture Diagram**
+> - **CSS-only visual diagram** showing all repos and their connections
+> - Use boxes for repos, colored by type (frontend=blue, backend=green, library=purple, infra=gray, database=orange)
+> - Draw connection lines between related repos with labeled relationship types
+> - Group repos into layers: Infrastructure → Libraries → Services → Frontends → Gateways
+> - Include ports, protocols, and data flow direction
+> - Make this the centerpiece of the document — it should look like a professional architecture diagram
+>
+> **4. Repository Catalog**
+> - Table of ALL repos with: name, language, framework, description, status (active/archived), last updated
+> - Sortable by column (CSS-only or with minimal JS)
+> - Click to jump to that repo's detailed section
+>
+> **5. Per-Repository Detail Pages**
+> For EACH repository, create a detailed subsection:
+>   - **Overview:** name, description, language, framework, database, last commit
+>   - **Tech Stack:** exact versions of all key dependencies
+>   - **Dependencies:** which other org repos it depends on, and which depend on it
+>   - **API Endpoints:** (if detected) key endpoints this service exposes
+>   - **Environment Variables:** table with name, description, required, default
+>   - **Available Commands:** dev, test, build, deploy scripts
+>   - **Directory Structure:** annotated tree (3 levels deep)
+>   - **Setup Instructions:** step-by-step with copyable commands
+>   - **Notes:** any issues or gotchas found during analysis
+>
+> **6. Relationship Map (Detailed)**
+> - Full table of all inter-repo relationships
+> - For each: source repo, target repo, relationship type, evidence (what file/config established this), description
+> - Group by relationship type
+>
+> **7. Service Communication Map**
+> - Which services talk to which, on what ports, using what protocols
+> - Database connections: which repos connect to which databases
+> - Message queue connections (if any)
+> - Shared file systems or storage
+>
+> **8. Development Environment Setup Guide**
+> - **Prerequisites:** everything needed across ALL repos (Node.js, Java, Docker, etc.)
+> - **Startup Order:** numbered list with dependency reasoning
+> - **Quick Start:** the minimum commands to get the entire stack running
+> - **Per-Repo Setup:** detailed setup for each repo (from individual analyses)
+> - **Verification:** how to check that everything is running and connected
+>
+> **9. Shared Conventions**
+> - Common patterns detected across repos (naming, structure, testing, CI)
+> - Shared libraries and how they're consumed
+> - Common environment variables across repos
+>
+> **10. Architecture Decision Notes**
+> - Why the org is structured this way (inferred from the codebase)
+> - Technology choices and their implications
+> - Areas of concern (outdated deps, inconsistent patterns, orphaned repos)
+>
+> **11. Quick Reference**
+> - All service URLs and ports in one table
+> - All environment variables across all repos in one table
+> - All database connection info in one place
+> - Key commands for each repo in one place
+>
+> ### Styling
+> - Clean light theme with a sidebar navigation
+> - Architecture diagram: CSS grid/flexbox with colored boxes and connection lines
+> - Copyable code blocks with copy button
+> - Collapsible repo detail sections (expand/collapse)
+> - Color coding by repo type (frontend, backend, library, infra)
+> - Search/filter for the repo catalog (minimal JS)
+> - Print-friendly layout
+> - Responsive design
+>
+> ### Diagram Styling Specifics
+> The architecture diagram should use:
+> - Rounded rectangles for repos (12px border-radius)
+> - Color coding: Frontend (#3b82f6 blue), Backend (#22c55e green), Library (#a78bfa purple), Database (#f59e0b orange), Infrastructure (#94a3b8 gray), Gateway (#06b6d4 cyan)
+> - Connection lines using CSS borders or pseudo-elements
+> - Labels on connections showing the relationship type
+> - Layered layout: bottom=infra/DB, middle=services, top=frontends
+> - Repo cards show: name, language icon/badge, port number, brief description
+
+**Before launching the agent**, write the org scan data:
+
+```bash
+mkdir -p reports
+```
+
+Write `reports/org-scan-data.json` with all collected data: repos, analyses, relationships, startup order, setup results.
+
+After the agent completes, present the result:
+
+```
+## Organization Documentation Complete: {ORG_NAME}
+
+**Repos analyzed:** {count}
+**Languages:** {list}
+**Relationships mapped:** {count}
+**Architecture diagram:** included
+
+**Documentation:** `reports/org-documentation.html`
+
+Open the HTML file to see the full architecture diagram, relationship map, and setup guide for every repository.
+```
+
+Then proceed to ask about full setup (Org Step 7) if not already done.
+
+After org documentation is complete, **return to the normal flow** — if the user chose to set up repos, proceed to Phase 4 for each selected repo in startup order.
 
 ---
 
