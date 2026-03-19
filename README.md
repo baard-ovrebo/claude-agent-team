@@ -1,6 +1,6 @@
 # Claude Agent Team
 
-An AI development team built on [Claude Code](https://claude.ai/claude-code) — 21 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, review code, run tests, audit dependencies, containerize, and deploy.
+An AI development team built on [Claude Code](https://claude.ai/claude-code) — 23 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, review code, run tests, audit dependencies, sync branches, onboard repositories, containerize, and deploy.
 
 No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines.
 
@@ -19,23 +19,27 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | **Test Engineer** | Unit tests across 9 language stacks |
 | **Code Analyst** | Git diff security + quality review |
 | **Documentation Lead** | Compiles HTML reports |
+| **Merge Conflict Resolver** | Analyzes and resolves Git conflicts |
+| **Onboarding Engineer** | Analyzes repos and sets up dev environments |
 
 ## Commands
 
 ### Project Management
 | Command | Description |
 |---------|-------------|
-| `/jira FO-2847` | Full ticket-to-resolution: fetch, analyze, design, implement, review, report, update Jira |
-| `/jira sprint` | Batch process sprint tickets with team filtering |
-| `/jira teams` | List available Scrum teams |
-| `/jam {url}` | Analyze JAM bug recordings via MCP |
+| `/jira FO-2847` | Full ticket-to-resolution: fetch, analyze JAM recordings, classify, design, implement, review, report, update Jira |
+| `/jira sprint` | Batch process sprint tickets — fetches Scrum teams dynamically, user picks team, processes each ticket |
+| `/jira teams` | List all available Scrum teams from Jira |
+| `/jira watch FO-2847` | Poll a ticket for new comments — auto-resumes pipeline when reporter replies |
+| `/jira resume FO-2847` | Resume a paused ticket from a saved state file (new session) |
+| `/jam {url}` | Analyze JAM bug recordings via MCP — video analysis, console logs, network requests, user events |
 | `/tempo` | Log time to Jira (`/tempo addTime FO-2847 2h "Bug fix"`) |
 
 ### Feature Development
 | Command | Description |
 |---------|-------------|
 | `/new-feature` | 6-phase pipeline: plan → screenshot → design in Paper → parallel implementation → code review → report |
-| `/code-analysis` | Review only the git diff for security + quality issues |
+| `/code-analysis` | Review only the git diff for security + quality issues, auto-fix critical problems |
 
 ### Code Quality (Iterative Loop)
 | Command | Description |
@@ -51,10 +55,29 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | Command | Description |
 |---------|-------------|
 | `/unit-test *` | Full project test coverage scan + gap filling |
-| `/unit-test --fix-ignored` | Find and rehabilitate disabled/skipped tests |
-| `/unit-test {file}` | Create tests for a specific file |
+| `/unit-test --fix-ignored` | Find and rehabilitate disabled/skipped tests — user selects which to unignore and fix |
+| `/unit-test {file}` | Create tests for a specific file or class |
 | `/playwright-test` | Run Playwright E2E browser tests |
-| `/deps` | Dependency health audit: CVEs, outdated, licenses (grade A–F) |
+| `/deps` | Dependency health audit: CVEs (with exploitability check), outdated packages, license risks (grade A–F) |
+
+### Git Operations
+| Command | Description |
+|---------|-------------|
+| `/git sync develop` | Merge latest from a branch into current — pre-flight checks, fetch, merge |
+| `/git sync develop --fix-merge-errors` | Same + auto-resolve conflicts with AI analysis per file |
+| `/git sync develop --all` | Sync all projects in the project map |
+| `/git status` | Quick branch overview: ahead/behind, uncommitted changes, stashes |
+
+### Repository Onboarding
+| Command | Description |
+|---------|-------------|
+| `/repo-setup {url}` | Clone a repo, analyze stack, install deps, configure env, build, test, start — produces HTML setup guide |
+| `/repo-setup https://github.com/org` | Scan entire GitHub org — map all repos, relationships, architecture diagram, startup order |
+| `/repo-setup {org} --auto-setup` | Auto-clone, install, build, test ALL repos without prompting |
+| `/repo-setup {org} --search "API"` | Filter org repos by name, description, topics, or README content |
+| `/repo-setup {org} --auto-setup --search "control"` | Auto-setup only repos matching the search |
+| `/repo-setup {url} --analyze-only` | Report only, don't install anything |
+| `/repo-setup --local-scan D:\Projects` | Scan repos already on disk instead of cloning |
 
 ### Docker Pipeline
 | Command | Description |
@@ -64,6 +87,34 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | `/docker-test` | Integration tests against live container |
 | `/docker-teardown` | Graceful cleanup |
 | `/full-pipeline` | All of the above: dev-team + Playwright + Docker + report |
+
+## Key Features
+
+### Jira Pipeline — Ticket to Resolution
+- Fetches full ticket details, downloads and resizes image attachments
+- **Auto-detects JAM links** in tickets and analyzes bug recordings via MCP (video, console, network, user events)
+- **Reads and analyzes comments** — extracts additional requirements, identifies unanswered questions
+- **@mentions the reporter** on Jira if info is missing (posted as the authenticated user)
+- **Watch mode** — polls for replies every 2 min, auto-resumes when the reporter answers, supports back-and-forth dialogue
+- **State persistence** — saves pipeline state to JSON so you can resume from a new session
+- **Git branch setup** — asks to create branches for all affected projects before implementation
+- **Design in Paper** — creates mockups via MCP, user approval gate before any code is written
+- **Parallel implementation** — Frontend + Backend agents work simultaneously
+
+### Repository Onboarding
+- **Single repo mode** — detects stack, installs deps, configures env, sets up DB, runs migrations, builds, tests, starts dev server
+- **Organization scan** — fetches all repos via GitHub API, analyzes each, maps inter-repo relationships (depends-on, frontend-for, shares-data, shared-library, gateway, deploys-with)
+- **Architecture diagram** — CSS visual showing repos as color-coded boxes with connection lines
+- **Startup order** — calculates correct order based on dependency graph
+- **GitHub account switching** — if current `gh` account can't access the org, lists all authenticated accounts and lets you pick
+- **Dependent repo detection** — finds git submodules, Docker Compose refs, local package deps, .NET ProjectReferences, Maven modules
+- **HTML setup guide** — 12-section document: prerequisites, quick start, step-by-step, env vars, commands, architecture, testing, troubleshooting
+
+### Git Operations
+- **Pre-flight checks** — uncommitted changes detection, stash option, branch existence verification
+- **AI conflict resolution** — per-file analysis: both-needed, incoming-preferred, current-preferred, or needs-human-review
+- **Lock file regeneration** — auto-regenerates package-lock.json, yarn.lock, poetry.lock, go.sum after merge
+- **Multi-project sync** — syncs across frontend + backend repos simultaneously
 
 ## Setup
 
@@ -110,6 +161,8 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | `/jam` | JAM MCP server |
 | `/new-feature` (design phase) | Paper MCP server |
 | `/unit-test`, `/deps`, `/dev-team` | Nothing extra — works standalone |
+| `/git sync` | Git installed (works standalone) |
+| `/repo-setup` | `gh` CLI for org scan, otherwise standalone |
 | `/docker-*` | Docker Desktop |
 | `/playwright-test` | Node.js + Playwright |
 
@@ -132,6 +185,8 @@ Agents don't talk to each other directly. They communicate through `reports/*.md
 - **Parallel where possible** — Security + Quality scan simultaneously, Frontend + Backend build simultaneously
 - **Iterative loops** — scan → fix → re-scan until clean (not single-pass)
 - **Stack-agnostic** — runtime detection adapts to Java, C#, JS, Python, Go, Rust, PHP, Ruby
+- **State persistence** — paused pipelines can be resumed from new sessions
+- **Always generate reports** — every pipeline produces an HTML report as an audit trail
 
 ## Documentation
 
@@ -146,15 +201,28 @@ Agents don't talk to each other directly. They communicate through `reports/*.md
 ```
 .claude/
   commands/
-    jira.md              # Jira ticket orchestrator (46KB — the biggest pipeline)
+    jira.md              # Jira ticket orchestrator (50KB+ — the biggest pipeline)
     new-feature.md       # Feature development pipeline
+    repo-setup.md        # Repository onboarding & org scanner
     unit-test.md         # Unit test engineer
     deps.md              # Dependency health auditor
+    git.md               # Git operations (sync, status, conflict resolution)
     dev-team.md          # Iterative quality loop
     full-pipeline.md     # End-to-end delivery
     jam.md               # JAM bug recording analyzer
     tempo.md             # Time tracking
-    ... (21 commands total)
+    docker-build.md      # Docker build engineer
+    docker-deploy.md     # Docker deploy engineer
+    docker-test.md       # Docker integration tests
+    docker-teardown.md   # Docker cleanup
+    code-analysis.md     # Code change reviewer
+    security-audit.md    # Security auditor
+    quality-audit.md     # Quality engineer
+    fix-all.md           # Backend developer (fix mode)
+    test-all.md          # Test engineer
+    master-report.md     # Report compiler
+    new-feature.md       # Feature pipeline
+    playwright-test.md   # E2E test engineer
 docs/                    # HTML documentation and diagrams
 reports/                 # Generated reports (gitignored)
 .env.example             # Credential template
