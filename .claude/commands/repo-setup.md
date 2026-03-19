@@ -19,6 +19,8 @@ You are a **Senior DevOps & Onboarding Engineer**. Your job is to take a Git rep
 | `{org_url}` | **Organization Scan** — analyze ALL repos in a GitHub org/user | `/repo-setup https://github.com/nexum-fo` |
 | `{org_url} --search "{text}"` | **Org Search** — only process repos matching the search text | `/repo-setup https://github.com/nexum-fo --search "Public API"` |
 | `{org_url} --analyze-only` | **Org Scan (report only)** — map the entire org without cloning | `/repo-setup https://github.com/nexum-fo --analyze-only` |
+| `... --auto-setup` | **Auto Setup** — clone, install, and configure ALL repos without prompting | `/repo-setup https://github.com/nexum-fo --auto-setup` |
+| `... --auto-setup --search "{text}"` | **Auto Setup + Search** — auto-setup only repos matching the search | `/repo-setup https://github.com/nexum-fo --auto-setup --search "Public API"` |
 | `... --gh-user {account}` | **Switch GitHub account** — use a different gh account for API/clone | `/repo-setup https://github.com/nexum-fo --gh-user ext-bard-ovrebo` |
 | `... --local-scan {path}` | **Local Org Scan** — scan repos already on disk instead of cloning | `/repo-setup https://github.com/nexum-fo --local-scan D:\Kunder` |
 | `{local_path}` | **Local Repo** — analyze an already-cloned repo | `/repo-setup D:\Projects\my-app` |
@@ -63,6 +65,7 @@ Extract:
 - `{ORG_NAME}` — the GitHub organization or user name (if org mode)
 - `--analyze-only` — if present, only produce the report, don't install or configure anything
 - `--search "{text}"` — if present, only process repos whose name or description contains this text (case-insensitive). Also checks the repo's README for the search text after cloning.
+- `--auto-setup` — if present, skip ALL interactive prompts for repo selection and setup. Automatically: clone all repos (or search-filtered repos), install dependencies, configure environment (using defaults), build, run tests, and generate the full HTML report. Combines with `--search` to auto-setup only matching repos.
 - `--gh-user {account}` — if present, switch to this GitHub account before running API calls and cloning. Useful when the default `gh` account doesn't have access to the target org.
 - `--local-scan {path}` — if present, skip cloning entirely and instead scan the local filesystem for repos belonging to this org. Searches the given path recursively for directories containing `.git` with a remote URL matching the org name.
 
@@ -325,7 +328,10 @@ Found {count} repositories ({active} active, {archived} archived):
 Archived: {list of archived repos, shown separately}
 ```
 
-Ask the user:
+**If `--auto-setup` is set:** Skip the selection prompt. Automatically select all active (non-archived) repos (or search-filtered repos if `--search` was also used). Inform the user:
+> "Auto-setup mode: processing {count} active repos from {ORG_NAME}."
+
+**If `--auto-setup` is NOT set**, ask the user:
 
 > "I found {count} repositories in {ORG_NAME}. How would you like to proceed?"
 
@@ -337,7 +343,10 @@ Options:
 
 ### Org Step 3 — Clone Selected Repositories
 
-Ask the user for a parent directory:
+**If `--auto-setup` is set:** Skip the directory prompt. Clone all repos into `./{ORG_NAME}/` (default location). Inform the user:
+> "Auto-setup: cloning {count} repos into `./{ORG_NAME}/`..."
+
+**If `--auto-setup` is NOT set**, ask the user for a parent directory:
 
 > "Where should I clone the repos? I'll create a subfolder for each one."
 
@@ -441,7 +450,28 @@ STARTUP_ORDER:
   6. {repo_name} (gateway — port 8080, routes to #3 and #4)
 ```
 
-### Org Step 7 — Ask About Full Setup
+### Org Step 7 — Setup Decision
+
+**If `--auto-setup` is set:** Skip the prompt entirely. Automatically run the full setup for ALL repos in the calculated startup order. Inform the user:
+> "Auto-setup: installing dependencies, configuring environment, building, and testing {count} repos in dependency order..."
+
+For each repo, run Phase 4 (Execute Setup) with these auto-setup defaults:
+- **Dependencies:** install automatically (npm install / mvn install / dotnet restore / etc.)
+- **Environment:** copy `.env.example` to `.env` if available, use all defaults. If no `.env.example` exists, skip env setup for that repo and note it in the report.
+- **Database:** if Docker Compose has a DB service, start it. Otherwise skip and note it.
+- **Build:** run the detected build command
+- **Tests:** run the detected test command, record results (don't stop on failures)
+- **Dev Server:** do NOT start dev servers in auto-setup mode (they'd block each other). Just verify the build succeeds.
+
+After each repo, report progress:
+```
+[{current}/{total}] {repo_name}: {status}
+  Dependencies: {ok/failed}
+  Build: {ok/failed}
+  Tests: {X passed, Y failed}
+```
+
+**If `--auto-setup` is NOT set**, ask the user:
 
 > "I've analyzed {count} repositories and mapped their relationships. Would you like me to set up the development environment?"
 
