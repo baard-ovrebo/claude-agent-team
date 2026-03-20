@@ -756,10 +756,12 @@ Review ALL comments chronologically and extract:
 > How should I handle this?"
 
 Options:
-1. **Ask the reporter on Jira** — Post a comment on the ticket mentioning the reporter, asking for clarification
+1. **Ask the reporter on Jira** — Post a question @mentioning the reporter, then automatically watch for their reply (I'll resume when they respond)
 2. **I'll clarify now** — I'll answer the questions here (use the text box)
 3. **Proceed with assumptions** — Make reasonable assumptions and document them in the report
 4. **Skip this ticket** — Move on, this needs more info before implementation
+
+**IMPORTANT: If the agent determines that it genuinely cannot implement the ticket without more information** (e.g., the description is too vague, critical details are missing, contradictory requirements), it should **recommend option 1** to the user rather than proceeding with risky assumptions. The agent should say something like: "I recommend asking the reporter — the ticket doesn't specify X and Y, which are critical for the implementation."
 
 **If the user chooses "Ask the reporter on Jira":**
 
@@ -825,20 +827,35 @@ source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
   }'
 ```
 
-After posting, save the pipeline state (see **SAVE STATE** below) and ask the user:
+After posting, save the pipeline state (see **SAVE STATE** below).
 
-> "Question posted on {KEY} mentioning @{reporter_name}. What would you like to do while waiting?"
+**DEFAULT BEHAVIOR: Automatically enter the WATCH LOOP.**
+
+The agent should NOT stop and wait for the user to decide — it should immediately start watching for the reporter's reply. Inform the user:
+
+> "Question posted on {KEY} mentioning @{reporter_name}. Now watching for their reply (polling every 2 minutes). I'll automatically resume the pipeline when they respond.
+>
+> Press Ctrl+C to stop watching, or type `stop` to save state and come back later."
+
+**Enter the WATCH LOOP** (see Watch Step 2 below). The pipeline stays alive, polls for new comments, and automatically resumes when the reporter replies. This creates a seamless flow:
+
+1. Agent analyzes ticket → needs more info
+2. Agent posts question on Jira @mentioning reporter
+3. Agent enters watch loop automatically
+4. Reporter replies on Jira
+5. Agent detects reply → auto-resumes pipeline with the new information
+6. If agent needs more info again → posts another question → watches again
+7. Loop continues until the ticket has enough info to implement
+
+**If the user interrupts** (Ctrl+C or types `stop`): Save state. The user can run `/jira resume {KEY}` later.
+
+**In sprint mode:** If processing multiple tickets, ask before entering the watch loop:
+
+> "Question posted. Should I watch for the reply or move to the next ticket?"
 
 Options:
-1. **Watch for reply** — I'll poll the ticket every 2 minutes and automatically resume when they respond
-2. **I'll come back later** — Save state, I'll run `/jira resume {KEY}` when ready
-3. **Move to next ticket** — (sprint mode only) Continue with the next ticket, come back to this one later
-
-**If "Watch for reply":** Enter the **WATCH LOOP** (see below). The pipeline stays alive, polls for new comments, and automatically resumes when the reporter replies.
-
-**If "I'll come back later":** Save state and stop. The user can run `/jira resume {KEY}` in a new session to pick up where they left off.
-
-**If "Move to next ticket":** Save state and continue to the next ticket in the sprint batch. The user can resume this ticket later with `/jira resume {KEY}`.
+1. **Watch here** — Wait for the reply on this ticket (default)
+2. **Next ticket** — Save state, continue with next ticket. Resume this one later with `/jira resume {KEY}`
 
 **If the user chooses "Proceed with assumptions":**
 Document all assumptions clearly. These will be included in the implementation report and the Jira comment so the reporter can validate them.
