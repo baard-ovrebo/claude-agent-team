@@ -166,6 +166,7 @@ JIRA_API_TOKEN=your-api-token</pre>
   <div class="box" style="border-color:var(--amber);background:var(--amber-l);">/jira {KEY}</div>
   <span class="arrow">&rarr; uses &rarr;</span>
   <div class="box" style="border-color:var(--amber);background:var(--amber-l);">/jam</div>
+  <div class="box" style="border-color:var(--amber);background:var(--amber-l);">/jira watch</div>
   <div class="box" style="border-color:var(--purple);background:var(--purple-l);">Paper MCP</div>
   <div class="box" style="border-color:var(--purple);background:var(--purple-l);">/code-analysis</div>
 </div>
@@ -204,16 +205,31 @@ JIRA_API_TOKEN=your-api-token</pre>
 </ol></div></details>
 <details><summary>Advanced Features</summary><div>
 <ul>
-<li><strong>Comment analysis</strong> &mdash; reads all comments, extracts requirements, identifies unanswered questions</li>
-<li><strong>@mentions reporter</strong> &mdash; posts questions on Jira mentioning the reporter if info is missing</li>
-<li><strong>JAM auto-detection</strong> &mdash; scans description and comments for jam.dev links</li>
-<li><strong>Git branch setup</strong> &mdash; lists available branches, user picks base and name (hotfix/feature/custom)</li>
-<li><strong>Image auto-resize</strong> &mdash; resizes attachments to max 1600px before analysis</li>
-<li><strong>Watch mode</strong> &mdash; can enter polling loop to wait for reporter replies</li>
-<li><strong>State persistence</strong> &mdash; saves state to JSON for cross-session resume</li>
+<li><strong>Comment analysis</strong> &mdash; reads ALL comments chronologically, extracts additional requirements added after the description, identifies unanswered questions, notes latest context that may override the description</li>
+<li><strong>Automatic @mention + watch loop</strong> &mdash; if the agent determines it doesn&rsquo;t have enough info to implement, it <strong>recommends</strong> asking the reporter, posts a question @mentioning them on Jira, then <strong>automatically enters a watch loop</strong> (polls every 2 min). When the reporter replies, the agent detects it, analyzes the answer, and auto-resumes the pipeline. If it still needs more info, it posts another question and watches again. This back-and-forth continues until the ticket has enough info.</li>
+<li><strong>JAM auto-detection</strong> &mdash; scans description and comments for jam.dev links, analyzes each via MCP (video, console logs, network requests, user events)</li>
+<li><strong>Git branch setup</strong> &mdash; after plan approval, asks to create branches. Lists available branches from each project, user picks base branch and names the new one (hotfix/FO-xxx, feature/FO-xxx, custom)</li>
+<li><strong>Image auto-resize</strong> &mdash; resizes downloaded attachments to max 1600px before analysis (prevents multi-image dimension errors)</li>
+<li><strong>State persistence</strong> &mdash; saves full pipeline state to <code>reports/jira-state-{KEY}.json</code> when paused. Resume from a new session with <code>/jira resume {KEY}</code> &mdash; no need to re-enter project paths, branches, or approvals</li>
 </ul></div></details>
+<details><summary>The Automatic Dialogue Flow</summary><div>
+<ol>
+<li>Agent analyzes ticket &rarr; determines it needs more information</li>
+<li>Agent recommends asking the reporter (&ldquo;I recommend asking &mdash; the ticket doesn&rsquo;t specify X and Y&rdquo;)</li>
+<li>Posts @mention comment on Jira with specific questions</li>
+<li><strong>Automatically enters watch loop</strong> (no user prompt needed)</li>
+<li>Polls every 2 minutes for new comments</li>
+<li>Reporter replies on Jira &rarr; agent detects reply &rarr; analyzes if it answers the question</li>
+<li>If answered: <strong>auto-resumes pipeline</strong> from where it paused</li>
+<li>If reporter asks a counter-question: presents to user, can draft AI response</li>
+<li>If agent still needs more info after resuming: posts another question &rarr; watches again</li>
+<li>Loop continues until ticket is fully resolved</li>
+</ol>
+<p><strong>In sprint mode:</strong> asks whether to watch this ticket or move to the next one (since watching blocks the batch).</p>
+<p><strong>Interrupt:</strong> Ctrl+C saves state. Resume later with <code>/jira resume {KEY}</code>.</p>
+</div></details>
 <p><strong>Output:</strong> <code>reports/jira-{KEY}-report.html</code></p>
-<p><strong>Uses:</strong></p><div class="uses"><a href="#jam">/jam</a><a href="#code-analysis">/code-analysis</a><a href="#">Paper MCP</a></div>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#jam">/jam</a><a href="#jira-watch">/jira watch</a><a href="#code-analysis">/code-analysis</a><a href="#">Paper MCP</a></div>
 <p><strong>Requires:</strong> <code>.env</code> with Jira credentials</p>
 </div>
 
@@ -243,18 +259,26 @@ JIRA_API_TOKEN=your-api-token</pre>
 
 <div class="cmd-card" style="border-left-color:var(--amber);" id="jira-watch">
 <h3><code>/jira watch {KEY}</code> <span class="badge b-amber">Project Management</span></h3>
-<p class="desc">Polls a Jira ticket every 2 minutes for new comments. When the reporter replies, analyzes if it answers the pending question and auto-resumes the pipeline. Supports full back-and-forth dialogue.</p>
-<pre>/jira watch FO-2847</pre>
-<details><summary>How the Dialogue Loop Works</summary><div>
+<p class="desc">Polls a Jira ticket every 2 minutes for new comments. <strong>Automatically entered</strong> whenever the <code>/jira</code> pipeline posts a question to the reporter. Can also be run standalone. When the reporter replies, analyzes the answer and auto-resumes the pipeline.</p>
+<pre>/jira watch FO-2847                    # Standalone: watch a ticket
+# Also auto-entered by /jira {KEY} when it posts a question</pre>
+<details><summary>How It Gets Triggered</summary><div>
+<p><strong>Automatic (most common):</strong> When <code>/jira FO-2847</code> determines it needs more info, it posts a question @mentioning the reporter and immediately enters the watch loop. No user action needed.</p>
+<p><strong>Manual:</strong> Run <code>/jira watch FO-2847</code> to start watching a ticket you previously paused or where you&rsquo;re expecting a response.</p>
+</div></details>
+<details><summary>The Dialogue Loop</summary><div>
 <ol>
 <li>Pipeline posts a question on Jira (@mentions reporter)</li>
-<li>Enters watch loop &mdash; polls every 2 minutes</li>
+<li><strong>Automatically enters watch loop</strong> &mdash; polls every 2 minutes</li>
+<li>Ignores its own comments (from the authenticated user)</li>
 <li>When reply detected: analyzes if it answers the question</li>
-<li>If answered: auto-resumes pipeline from where it paused</li>
-<li>If counter-question: presents to user, can draft AI response or let user type</li>
-<li>After responding, continues watching for next reply</li>
+<li>If answered: <strong>auto-resumes pipeline</strong> from where it paused</li>
+<li>If counter-question: presents to user, can draft AI response or let user type, posts it, continues watching</li>
+<li>If pipeline needs more info after resuming: posts another question &rarr; watches again</li>
 <li>Loop continues until ticket is fully resolved</li>
-</ol></div></details>
+</ol>
+<p><strong>Interrupt:</strong> Ctrl+C or type <code>stop</code> to save state and exit. Resume later with <code>/jira resume {KEY}</code>.</p>
+</div></details>
 </div>
 
 <div class="cmd-card" style="border-left-color:var(--amber);" id="jira-resume">
