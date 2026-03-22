@@ -76,6 +76,7 @@ li{margin-bottom:4px;}
   <a href="#create" data-cmd="create">/create</a>
   <a href="#bug" data-cmd="bug">/bug</a>
   <a href="#changelog" data-cmd="changelog">/changelog</a>
+  <a href="#create-project" data-cmd="create-project">/create-project</a>
   <div class="cat" style="color:var(--purple);">Feature Development</div>
   <a href="#new-feature" data-cmd="new-feature">/new-feature</a>
   <a href="#code-analysis" data-cmd="code-analysis">/code-analysis</a>
@@ -108,9 +109,9 @@ li{margin-bottom:4px;}
 <!-- HERO -->
 <div class="hero">
   <h1>Claude Agent Team</h1>
-  <p>24 slash commands that orchestrate specialized AI agents for software development</p>
+  <p>26 slash commands that orchestrate specialized AI agents for software development</p>
   <div class="stats">
-    <div class="stat"><div class="v">25</div><div class="l">Commands</div></div>
+    <div class="stat"><div class="v">26</div><div class="l">Commands</div></div>
     <div class="stat"><div class="v">11</div><div class="l">Agent Roles</div></div>
     <div class="stat"><div class="v">8</div><div class="l">Categories</div></div>
     <div class="stat"><div class="v">9</div><div class="l">Language Stacks</div></div>
@@ -373,6 +374,32 @@ JIRA_API_TOKEN=your-api-token</pre>
 <pre>/changelog</pre>
 <p><strong>Output:</strong> <code>reports/changelog.html</code></p>
 <p><strong>Reads from:</strong></p><div class="uses"><a href="#create">/create</a> <a href="#bug">/bug</a> <span style="font-size:11px;color:var(--light);">report files</span></div>
+</div>
+
+<div class="cmd-card" style="border-left-color:var(--indigo);" id="create-project">
+<h3><code>/create-project "description"</code> <span class="badge b-indigo">Universal</span></h3>
+<p class="desc">Full project creator — from idea to running application. Asks clarifying questions, designs architecture and UI in Paper, generates an HTML plan with embedded mockup screenshots (auto-opens in browser), then orchestrates the full agent team to build, test, and deliver.</p>
+<pre>/create-project "A task management app with Kanban boards"
+/create-project "REST API for a pet adoption service"
+/create-project "2D platformer game with procedural levels"
+/create-project "SaaS dashboard for monitoring IoT devices"</pre>
+<details><summary>The Full Pipeline</summary><div>
+<ol>
+<li><strong>Questions</strong> &mdash; asks about stack preference, features for v1, auth needs, design style, where to create the project</li>
+<li><strong>Architecture</strong> &mdash; designs directory structure, database schema, API endpoints, component architecture</li>
+<li><strong>UI Design in Paper</strong> &mdash; creates 3-5+ screens in Paper via MCP (login, dashboard, feature pages, mobile). Takes screenshots.</li>
+<li><strong>HTML Plan</strong> &mdash; generates <code>reports/project-plan.html</code> with ALL Paper screenshots embedded, architecture docs, API spec, DB schema. Auto-opens in browser.</li>
+<li><strong>User Approval</strong> &mdash; Build / Adjust / Redesign / Change stack / Cancel</li>
+<li><strong>Build</strong> &mdash; scaffolds project, launches Backend Dev + Frontend Dev agents, Code Analyst reviews</li>
+<li><strong>Quality Loop</strong> &mdash; Security Auditor + Quality Engineer scan, Backend Dev fixes, Test Engineer tests, re-scan until clean</li>
+<li><strong>Verify</strong> &mdash; builds, starts the app, runs Playwright E2E verification with screenshots</li>
+<li><strong>Docker</strong> (if requested) &mdash; creates Dockerfiles, docker-compose.yml, builds and verifies</li>
+<li><strong>Delivery Report</strong> &mdash; generates <code>reports/project-delivery-report.html</code> with all screenshots, auto-opens</li>
+</ol>
+</div></details>
+<p><strong>Output:</strong> <code>reports/project-plan.html</code> (plan) + <code>reports/project-delivery-report.html</code> (delivery) + complete working project</p>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#">Paper MCP</a><a href="#verify">/verify</a><a href="#dev-team">/dev-team</a><a href="#code-analysis">/code-analysis</a></div>
+<p><strong>Requires:</strong> Paper MCP (for UI design), Playwright (for verification)</p>
 </div>
 
 <!-- ═══════════════════════════════════════ -->
