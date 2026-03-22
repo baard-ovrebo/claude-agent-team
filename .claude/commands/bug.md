@@ -261,10 +261,16 @@ The user must see what you are doing in real time. Print status BEFORE starting 
 
 ## Rules
 
+### MANDATORY PHASE EXECUTION — DO NOT SKIP
+- **Step 3.1 (E2E Verification)**: After fixing the bug, you MUST check if the app is running and offer Playwright verification. Do NOT skip this step. If the app is running, ask "Would you like me to verify the fix with Playwright?". This is NOT optional — always ask.
+- **Step 3.2 (Report)**: You MUST save a report AND present the verification status.
+
+### General Rules
 - **Always detect your role first** — same as /create
 - **Fix the root cause, not symptoms** — understand why before fixing what
 - **Minimum changes** — don't refactor or "improve" unrelated code
 - **Always save a report** — the changelog depends on it
+- **Always offer E2E verification** — if the app is running, ask. Every time.
 - **Report filename MUST include timestamp** — format: `YYYY-MM-DD_HH-MM-SS_bugfix_{slug}.md`
 - **Reports go to `.claude/unprocessed_reports/`** — create the directory if it doesn't exist
 - **Analyze screenshots if provided** — they often contain critical context (error messages, visual state, console output)

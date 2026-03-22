@@ -348,9 +348,19 @@ The user must see what you are doing in real time. Print status BEFORE starting 
 
 ## Rules
 
+### MANDATORY PHASE EXECUTION — DO NOT SKIP
+You MUST execute ALL phases in order. Do NOT skip any phase. Specifically:
+- **Step 1.2 (Paper Design)**: If the feature has ANY UI component, you MUST create mockups in Paper via MCP before generating the plan. If Paper is not available, note it in the plan but do NOT skip the plan HTML.
+- **Step 1.3 (HTML Plan)**: You MUST generate `reports/feature-plan.html` and present it to the user BEFORE implementing. Never skip straight to implementation.
+- **Step 1.4 (User Approval)**: You MUST wait for the user to accept the plan before writing any code.
+- **Step 3.1 (E2E Verification)**: After implementation, you MUST check if the app is running and offer Playwright verification. Do NOT skip this step. If the app is running, ask the user "Would you like me to verify with Playwright?". This is NOT optional — always ask.
+
+### General Rules
 - **Always detect your role first** — the ProjectType determines how you approach the work
 - **Match the project's existing patterns** — read before writing
 - **Always save a report** — the changelog depends on it
+- **Always generate the HTML plan first** — the user must see it before you code anything
+- **Always offer E2E verification** — if the app is running, ask. Every time.
 - **Report filename MUST include timestamp** — format: `YYYY-MM-DD_HH-MM-SS_feature_{slug}.md`
 - **Reports go to `.claude/unprocessed_reports/`** — create the directory if it doesn't exist
 - **Do NOT over-engineer** — implement what was asked, nothing more
