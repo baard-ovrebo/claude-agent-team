@@ -98,26 +98,118 @@ Break down the feature request:
 2. **Where** in the codebase it should live (based on project structure)
 3. **How** it connects to existing code (imports, dependencies, integration points)
 4. **What files** need to be created or modified
+5. **Does it involve UI changes?** — if yes, design mockups are needed
 
-### Step 1.2 — Present Plan & Confirm
+### Step 1.2 — Design Mockups (if UI changes)
 
-Present a brief plan using `AskUserQuestion`:
+**If the feature involves any visual/UI changes**, create design mockups in Paper before presenting the plan.
 
-> "Here's my plan for this feature:
+Check if Paper MCP is available:
+```bash
+# Try calling mcp__paper__get_basic_info — if it works, Paper is connected
+```
+
+**If Paper is available and the feature has UI components:**
+
+```
+[Create] Designing UI mockups in Paper...
+```
+
+Launch a design step (inline, not a sub-agent — the orchestrator does this):
+
+1. Call `mcp__paper__get_basic_info` to check the canvas
+2. Call `mcp__paper__create_artboard` for each UI view/component being created
+   - Name artboards descriptively: "{Feature Name} — {View Name}"
+   - Use 1280x800 for desktop, 375x800 for mobile
+3. Call `mcp__paper__write_html` to design the UI using the project's existing design patterns
+   - Read the project's CSS/styling to match the design language
+   - Use realistic content, not placeholders
+4. Call `mcp__paper__get_screenshot` for each artboard to capture the design
+5. Call `mcp__paper__finish_working_on_nodes` when done
+
+Save each screenshot to `reports/plan-screenshots/`:
+```bash
+mkdir -p reports/plan-screenshots
+```
+
+For each screenshot returned as base64, save it:
+```bash
+python -c "
+import base64
+data = base64.b64decode('{base64_data}')
+with open('reports/plan-screenshots/{feature_slug}-{view_name}.png', 'wb') as f:
+    f.write(data)
+"
+```
+
+**If Paper is NOT available:** Skip mockups. The plan HTML will still be generated but without design screenshots.
+
+**If the feature is backend-only (no UI):** Skip mockups entirely.
+
+### Step 1.3 — Generate HTML Plan Document
+
+**MANDATORY — always generate a visual HTML plan before asking the user to confirm.**
+
+```
+[Create] Generating plan document...
+```
+
+Write `reports/feature-plan.html` — a self-contained HTML document that the user opens in their browser to review the full plan with embedded design screenshots.
+
+**The HTML plan MUST include:**
+
+1. **Header** — feature name, date, detected role, project type
+2. **Feature Summary** — 1-2 paragraph description of what will be built
+3. **Scope Badge** — UI-only / Backend-only / Full-stack
+4. **Design Mockups** (if created) — each Paper screenshot embedded as base64 `<img>`, with:
+   - Title describing what the screenshot shows (e.g., "Task List Page — New URL Field")
+   - Description of the design decisions made
+   - Annotations noting key elements
+   - Full-size image, clickable
+5. **Technical Plan:**
+   - Files to create (path + purpose)
+   - Files to modify (path + what changes)
+   - New components/endpoints/models being added
+   - API contract (if creating endpoints): method, path, request/response shapes
+   - Database changes (if any): new tables, columns, migrations
+6. **Implementation Approach** — step-by-step description of how the feature will be built
+7. **Integration Points** — how the new code connects to existing code
+8. **Dependencies** — new packages needed (if any)
+9. **Testing Plan** — how the feature will be verified after implementation
+10. **Risk Assessment** — breaking changes, migration concerns, edge cases
+
+**Styling:**
+- Clean light theme, system font
+- Design screenshots displayed prominently as large cards with captions
+- Code blocks for file paths and API contracts
+- Color-coded scope badge (blue=UI, green=backend, purple=full-stack)
+- Print-friendly
+- Self-contained (all images as base64)
+
+### Step 1.4 — Present Plan & Confirm
+
+Present the plan to the user with a link to the HTML file using `AskUserQuestion`:
+
+> "I've created a detailed plan for this feature:
 >
-> **Role:** {your_role}
 > **Feature:** {summary}
-> **Files to create/modify:**
-> - {file list}
+> **Scope:** {UI-only / Backend-only / Full-stack}
+> **Files affected:** {count} to create, {count} to modify
+> {If mockups:} **Design mockups:** {count} views designed in Paper
 >
-> **Approach:** {brief technical approach}
+> **Open the plan:** `reports/feature-plan.html` — open in your browser to see the full plan with design mockups.
 >
-> Proceed?"
+> What would you like to do?"
 
 Options:
-1. **Go ahead** — Implement it
-2. **Adjust** — I want to change something (type in text box)
-3. **Cancel** — Don't implement
+1. **Accept & implement** — Implement exactly as planned
+2. **Adjust the plan** — I want to change something (type in text box)
+3. **Redesign** — I want different designs (re-launch Paper design)
+4. **Cancel** — Don't implement
+
+**If "Adjust":** Update the plan based on user feedback, regenerate the HTML, present again.
+**If "Redesign":** Re-run Step 1.2 with user's design feedback, regenerate HTML, present again.
+**If "Accept":** Proceed to Phase 2. The plan HTML serves as the implementation spec — the agent follows it exactly.
 
 ---
 
