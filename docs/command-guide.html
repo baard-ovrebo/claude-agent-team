@@ -168,6 +168,7 @@ JIRA_API_TOKEN=your-api-token</pre>
   <span class="arrow">&rarr; uses &rarr;</span>
   <div class="box" style="border-color:var(--amber);background:var(--amber-l);">/jam</div>
   <div class="box" style="border-color:var(--amber);background:var(--amber-l);">/jira watch</div>
+  <div class="box" style="border-color:var(--blue);background:var(--blue-l);">/verify</div>
   <div class="box" style="border-color:var(--purple);background:var(--purple-l);">Paper MCP</div>
   <div class="box" style="border-color:var(--purple);background:var(--purple-l);">/code-analysis</div>
 </div>
@@ -237,7 +238,7 @@ JIRA_API_TOKEN=your-api-token</pre>
 <p><strong>Interrupt:</strong> Ctrl+C saves state. Resume later with <code>/jira resume {KEY}</code>.</p>
 </div></details>
 <p><strong>Output:</strong> <code>reports/jira-{KEY}-report.html</code></p>
-<p><strong>Uses:</strong></p><div class="uses"><a href="#jam">/jam</a><a href="#jira-watch">/jira watch</a><a href="#code-analysis">/code-analysis</a><a href="#">Paper MCP</a></div>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#jam">/jam</a><a href="#jira-watch">/jira watch</a><a href="#code-analysis">/code-analysis</a><a href="#verify">/verify</a><a href="#">Paper MCP</a></div>
 <p><strong>Requires:</strong> <code>.env</code> with Jira credentials</p>
 </div>
 
@@ -516,7 +517,7 @@ JIRA_API_TOKEN=your-api-token</pre>
 <p><code>/jira</code> includes verification screenshots in the Jira ticket attachments and comment.</p>
 </div></details>
 <p><strong>Output:</strong> <code>reports/verification-report.md</code> + <code>reports/verification-screenshots/*.png</code></p>
-<p><strong>Used by:</strong></p><div class="uses"><a href="#create">/create</a><a href="#bug">/bug</a><a href="#jira">/jira</a></div>
+<p><strong>Used by:</strong></p><div class="uses"><a href="#jira">/jira</a><a href="#create">/create</a><a href="#bug">/bug</a></div>
 <p><strong>Requires:</strong> Playwright + running application</p>
 </div>
 
