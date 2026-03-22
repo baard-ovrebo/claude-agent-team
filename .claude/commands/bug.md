@@ -204,7 +204,38 @@ severity: {critical/high/medium/low}
 {Brief explanation of what else was considered}
 ```
 
-### Step 3.1 — Present Result
+### Step 3.1 — E2E Verification (if app is running)
+
+**After fixing the bug, check if the application is running and the fix can be verified visually:**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null
+```
+
+**If the app is running AND the bug involves UI or user-facing behavior:**
+
+Ask the user:
+> "The app is running. Would you like me to verify the fix with Playwright?"
+
+Options:
+1. **Verify now** — Run E2E verification with screenshots
+2. **Skip verification** — I'll test manually later
+
+**If "Verify now":**
+- Check for `.claude/project-profile.json` — if missing, run the profile builder
+- Use Playwright to: login, navigate to the area where the bug was, reproduce the original steps, verify the bug is fixed
+- Take screenshots showing the fixed behavior
+- Attach screenshots to the report
+
+```
+[Bug] Verifying fix with Playwright...
+[Verify] Logging in as {test_user}...
+[Verify] Reproducing bug steps...
+[Verify] Screenshot: fix verified
+[Verify] Result: PASSED — bug no longer occurs
+```
+
+### Step 3.2 — Present Result
 
 ```
 Bug fixed: {short title}
@@ -212,6 +243,8 @@ Bug fixed: {short title}
 **Root cause:** {one-line summary}
 **Files modified:** {count}
 **Report saved:** .claude/unprocessed_reports/{filename}
+**Verification:** {PASSED / SKIPPED / NOT AVAILABLE (app not running)}
+{If verified: Screenshots at reports/verification-screenshots/}
 
 **How to verify:** {brief instruction}
 ```

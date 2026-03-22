@@ -194,7 +194,43 @@ status: implemented
 {Any important implementation details, tradeoffs, or things to be aware of}
 ```
 
-### Step 3.1 — Present Result
+### Step 3.1 — E2E Verification (if app is running)
+
+**After implementation, check if the application is running and can be verified:**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null
+```
+
+**If the app is running AND the feature involves UI or user-facing changes:**
+
+Ask the user:
+> "The app is running. Would you like me to verify the feature with Playwright?"
+
+Options:
+1. **Verify now** — Run E2E verification with screenshots
+2. **Skip verification** — I'll test manually later
+
+**If "Verify now":**
+- Check for `.claude/project-profile.json` — if missing, run the profile builder (ask for login details, frontend URL, etc.)
+- Use Playwright to: login, navigate to the relevant page, perform the verification steps from the "How to See / Test It" section of the report
+- Take BEFORE and AFTER screenshots
+- Attach screenshots to the report in `.claude/unprocessed_reports/`
+- Report pass/fail
+
+```
+[Create] Verifying feature with Playwright...
+[Verify] Logging in as {test_user}...
+[Verify] Navigating to {page}...
+[Verify] Screenshot: before state captured
+[Verify] Performing verification steps...
+[Verify] Screenshot: after state captured
+[Verify] Result: PASSED — {description}
+```
+
+**If app is not running or user skips:** Proceed to the final result without verification.
+
+### Step 3.2 — Present Result
 
 ```
 Feature implemented: {short title}
@@ -202,6 +238,8 @@ Feature implemented: {short title}
 **Files created:** {count}
 **Files modified:** {count}
 **Report saved:** .claude/unprocessed_reports/{filename}
+**Verification:** {PASSED / SKIPPED / NOT AVAILABLE (app not running)}
+{If verified: Screenshots at reports/verification-screenshots/}
 
 **How to test:** {brief instruction}
 ```

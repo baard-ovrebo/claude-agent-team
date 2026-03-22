@@ -90,6 +90,7 @@ li{margin-bottom:4px;}
   <a href="#unit-test" data-cmd="unit-test">/unit-test</a>
   <a href="#playwright-test" data-cmd="playwright-test">/playwright-test</a>
   <a href="#deps" data-cmd="deps">/deps</a>
+  <a href="#verify" data-cmd="verify">/verify</a>
   <div class="cat" style="color:var(--green);">Git Operations</div>
   <a href="#git" data-cmd="git">/git</a>
   <div class="cat" style="color:var(--cyan);">Onboarding</div>
@@ -109,7 +110,7 @@ li{margin-bottom:4px;}
   <h1>Claude Agent Team</h1>
   <p>24 slash commands that orchestrate specialized AI agents for software development</p>
   <div class="stats">
-    <div class="stat"><div class="v">24</div><div class="l">Commands</div></div>
+    <div class="stat"><div class="v">25</div><div class="l">Commands</div></div>
     <div class="stat"><div class="v">11</div><div class="l">Agent Roles</div></div>
     <div class="stat"><div class="v">8</div><div class="l">Categories</div></div>
     <div class="stat"><div class="v">9</div><div class="l">Language Stacks</div></div>
@@ -181,6 +182,13 @@ JIRA_API_TOKEN=your-api-token</pre>
   <span class="arrow">&rarr; reports &rarr;</span>
   <div class="box" style="border-color:var(--indigo);background:var(--indigo-l);">/changelog</div>
   <span class="arrow">&larr; reports &larr;</span>
+  <div class="box" style="border-color:var(--indigo);background:var(--indigo-l);">/bug</div>
+</div>
+<div class="row" style="margin-top:8px;">
+  <div class="box" style="border-color:var(--indigo);background:var(--indigo-l);">/create</div>
+  <span class="arrow">&rarr; auto-calls &rarr;</span>
+  <div class="box" style="border-color:var(--blue);background:var(--blue-l);">/verify</div>
+  <span class="arrow">&larr; auto-calls &larr;</span>
   <div class="box" style="border-color:var(--indigo);background:var(--indigo-l);">/bug</div>
 </div>
 </div>
@@ -472,6 +480,44 @@ JIRA_API_TOKEN=your-api-token</pre>
 /deps --outdated                      # Outdated packages only
 /deps --license                       # License audit only</pre>
 <p><strong>Output:</strong> <code>reports/deps-audit-report.html</code></p>
+</div>
+
+<div class="cmd-card" style="border-left-color:var(--blue);" id="verify">
+<h3><code>/verify</code> <span class="badge b-blue">Testing</span></h3>
+<p class="desc">E2E verification engineer. Uses Playwright to verify that implemented features and bug fixes actually work in the running application. Takes before/after screenshots as evidence. Uses a project profile for login and navigation.</p>
+<pre>/verify                                    # Auto-verify latest report
+/verify reports/jira-FO-2847-report.html   # Verify specific report
+/verify setup                              # Create/update project profile
+/verify "Check login redirects properly"   # Manual verification</pre>
+<details><summary>Project Profile System</summary><div>
+<p>On first run, <code>/verify</code> interactively builds a <code>.claude/project-profile.json</code> with:</p>
+<ul>
+<li><strong>Frontend URL</strong> &mdash; where the app runs (localhost:3000, etc.)</li>
+<li><strong>Auth config</strong> &mdash; login page URL, form selectors, test user credentials</li>
+<li><strong>Auth types supported:</strong> form login, OAuth/SSO (saved session), API key, basic auth, no auth</li>
+<li><strong>Viewport and timing</strong> &mdash; screenshot size, wait times</li>
+</ul>
+<p>Credentials go in <code>.claude/.env</code> (gitignored), not the profile JSON. The profile is reused for all future verifications.</p>
+</div></details>
+<details><summary>How Verification Works</summary><div>
+<ol>
+<li>Reads the &ldquo;How to Verify&rdquo; section from the report (<code>/create</code>, <code>/bug</code>, or <code>/jira</code> output)</li>
+<li>Translates each step into Playwright actions (navigate, click, fill, assert)</li>
+<li>Logs in using the project profile auth config</li>
+<li>Takes BEFORE screenshots</li>
+<li>Performs each verification step</li>
+<li>Takes AFTER screenshots</li>
+<li>Visually analyzes screenshots for confirmation</li>
+<li>Reports pass/fail per step with screenshot evidence</li>
+</ol>
+</div></details>
+<details><summary>Integration with Other Commands</summary><div>
+<p><code>/create</code> and <code>/bug</code> automatically offer to run <code>/verify</code> after implementation if the app is running. The verification results and screenshots are attached to the report.</p>
+<p><code>/jira</code> includes verification screenshots in the Jira ticket attachments and comment.</p>
+</div></details>
+<p><strong>Output:</strong> <code>reports/verification-report.md</code> + <code>reports/verification-screenshots/*.png</code></p>
+<p><strong>Used by:</strong></p><div class="uses"><a href="#create">/create</a><a href="#bug">/bug</a><a href="#jira">/jira</a></div>
+<p><strong>Requires:</strong> Playwright + running application</p>
 </div>
 
 <!-- ═══════════════════════════════════════ -->
