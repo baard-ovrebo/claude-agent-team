@@ -322,7 +322,7 @@ JIRA_API_TOKEN=your-api-token</pre>
 
 <div class="cmd-card" style="border-left-color:var(--indigo);" id="create">
 <h3><code>/create "description"</code> <span class="badge b-indigo">Universal</span></h3>
-<p class="desc">Context-aware feature creator. Reads ProjectType from <code>.claude/.env</code>, adapts role (Game Dev, App Dev, SaaS Dev, etc.), implements the feature, and saves a timestamped report.</p>
+<p class="desc">Context-aware feature creator. Reads ProjectType from <code>.claude/.env</code>, adapts role (Game Dev, App Dev, SaaS Dev, etc.), generates an HTML plan with Paper design mockups, gets user approval, implements, then verifies with Playwright.</p>
 <pre>/create "Monsters that hunt the player using pathfinding AI"
 /create "Add dark mode toggle to settings page"
 /create "REST endpoint for bulk invoice export"</pre>
@@ -338,17 +338,32 @@ JIRA_API_TOKEN=your-api-token</pre>
 <tr><td>API</td><td>Any backend</td><td>Senior API Developer</td></tr>
 <tr><td>MOBILE</td><td>React Native/Flutter/Swift/Kotlin</td><td>Senior Mobile Developer</td></tr>
 </tbody></table></div></details>
-<p><strong>Output:</strong> <code>.claude/unprocessed_reports/YYYY-MM-DD_HH-MM-SS_feature_{slug}.md</code></p>
+<details><summary>The Plan &rarr; Design &rarr; Implement Flow</summary><div>
+<ol>
+<li><strong>Analyze</strong> &mdash; understand the request, identify files to create/modify, detect if UI changes needed</li>
+<li><strong>Design mockups</strong> (if UI) &mdash; create artboards in Paper via MCP, capture screenshots</li>
+<li><strong>Generate HTML plan</strong> &mdash; <code>reports/feature-plan.html</code> with embedded Paper screenshots, technical plan, API contracts, testing plan. User opens in browser to review.</li>
+<li><strong>User approval gate</strong> &mdash; Accept / Adjust / Redesign / Cancel</li>
+<li><strong>Implement</strong> &mdash; follows the HTML plan exactly</li>
+<li><strong>Verify</strong> (if app running) &mdash; auto-offers Playwright E2E verification with screenshots</li>
+</ol>
+</div></details>
+<p><strong>Output:</strong> <code>reports/feature-plan.html</code> (plan) + <code>.claude/unprocessed_reports/YYYY-MM-DD_HH-MM-SS_feature_{slug}.md</code> (report)</p>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#verify">/verify</a><a href="#">Paper MCP</a></div>
 <p><strong>Used by:</strong></p><div class="uses"><a href="#changelog">/changelog</a> <span style="font-size:11px;color:var(--light);">reads its reports</span></div>
 </div>
 
 <div class="cmd-card" style="border-left-color:var(--indigo);" id="bug">
 <h3><code>/bug "description"</code> <span class="badge b-indigo">Universal</span></h3>
-<p class="desc">Context-aware bug fixer. Same role detection as /create. Analyzes pasted screenshots, diagnoses root cause, applies minimum fix, saves report.</p>
+<p class="desc">Context-aware bug fixer. Same role detection as /create. Analyzes pasted screenshots, diagnoses root cause, applies minimum fix, verifies with Playwright, saves report.</p>
 <pre>/bug "Player falls through floor when jumping near walls"
 /bug "Login shows 500 error after session timeout"</pre>
 <p><strong>Screenshots:</strong> Paste screenshots into the conversation before or with the command &mdash; the agent analyzes them for error messages, visual state, stack traces.</p>
+<details><summary>Verification</summary><div>
+<p>After fixing the bug, if the app is running, the agent auto-offers to verify the fix with Playwright. It logs in using the project profile, reproduces the original bug steps, confirms the bug no longer occurs, and takes screenshots as evidence. Results are attached to the report.</p>
+</div></details>
 <p><strong>Output:</strong> <code>.claude/unprocessed_reports/YYYY-MM-DD_HH-MM-SS_bugfix_{slug}.md</code></p>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#verify">/verify</a></div>
 <p><strong>Used by:</strong></p><div class="uses"><a href="#changelog">/changelog</a></div>
 </div>
 
