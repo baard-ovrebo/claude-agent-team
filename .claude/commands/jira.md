@@ -1787,6 +1787,14 @@ Every ticket MUST go through ALL applicable phases in order. You are NOT allowed
 
 If you catch yourself thinking "this is too simple to need a design/report/screenshot" — STOP. You are wrong. Follow the phases.
 
+
+### MANDATORY — CLICKABLE SCREENSHOTS IN HTML REPORTS
+Any HTML report that contains screenshots MUST include a JavaScript lightbox so users can click any screenshot to view it full-size. Include this in every generated HTML report that has images:
+- Every screenshot `<img>` must have `cursor: pointer` and an `onclick` handler
+- Clicking opens a dark overlay with the image at full viewport size (95vw/95vh max)
+- Clicking the overlay or pressing Escape closes it
+- This applies to: verification reports, feature plans, Jira reports, master reports, org documentation, before/after comparisons
+
 ### MANDATORY STATUS REPORTING
 
 **You MUST print a status line before every major step.** The user needs to see what's happening in real time. Status lines follow this format:

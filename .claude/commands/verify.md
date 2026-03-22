@@ -507,6 +507,34 @@ print(images_html)
 - Print-friendly — screenshots included in print output
 - Status badges: green (#22c55e) for PASS, red (#ef4444) for FAIL
 
+**MANDATORY — Clickable Full-Size Screenshot Lightbox:**
+Every screenshot in the HTML report MUST be clickable to open full-size. Include this CSS/JS lightbox in the report:
+
+```html
+<style>
+.screenshot-card img { cursor: pointer; max-width: 100%; border-radius: 6px; transition: opacity 0.2s; }
+.screenshot-card img:hover { opacity: 0.85; }
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; cursor: pointer; }
+.lightbox.active { display: flex; }
+.lightbox img { max-width: 95vw; max-height: 95vh; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.lightbox .close-btn { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 32px; font-weight: 700; cursor: pointer; }
+</style>
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('active')">
+  <span class="close-btn">&times;</span>
+  <img id="lightbox-img" src="" alt="Full size">
+</div>
+<script>
+document.querySelectorAll('.screenshot-card img').forEach(img => {
+  img.onclick = () => {
+    document.getElementById('lightbox-img').src = img.src;
+    document.getElementById('lightbox').classList.add('active');
+  };
+});
+</script>
+```
+
+This lightbox MUST be included in ALL HTML reports that contain screenshots — not just verification reports. Every `<img>` in a screenshot card must be wrapped to trigger the lightbox on click.
+
 **The report must be SELF-CONTAINED** — all images embedded as base64 so it works when opened from any location, shared via email, or uploaded to Jira. No external file dependencies.
 
 ### Step 4.3 — Attach to Original Report

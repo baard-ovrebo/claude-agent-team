@@ -585,6 +585,14 @@ After the report is generated, ask the user using `AskUserQuestion`:
 
 ---
 
+
+### MANDATORY — CLICKABLE SCREENSHOTS IN HTML REPORTS
+Any HTML report that contains screenshots MUST include a JavaScript lightbox so users can click any screenshot to view it full-size. Include this in every generated HTML report that has images:
+- Every screenshot `<img>` must have `cursor: pointer` and an `onclick` handler
+- Clicking opens a dark overlay with the image at full viewport size (95vw/95vh max)
+- Clicking the overlay or pressing Escape closes it
+- This applies to: verification reports, feature plans, Jira reports, master reports, org documentation, before/after comparisons
+
 ### MANDATORY STATUS REPORTING
 **Print a status line before EVERY major step.** Format:
 ```
