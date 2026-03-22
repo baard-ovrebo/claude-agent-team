@@ -111,3 +111,13 @@ Write your report to `reports/docker-integration-test-report.md` with:
 ## Recommendations
 [Any issues found, improvements suggested]
 ```
+
+---
+
+### MANDATORY STATUS REPORTING
+**Print a status line before EVERY major step.** Format:
+```
+[{Agent_Name}] {what is happening now}
+```
+The user must see what you are doing in real time. Print status BEFORE starting each step, not after. When spawning sub-agents, include this instruction in their prompt so they also report status with their agent name (e.g., [Security Auditor], [Frontend Developer], [Backend Developer], [Code Analyst], [Test Engineer], [UI Designer], [Documentation Lead]).
+
