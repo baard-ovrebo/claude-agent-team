@@ -127,12 +127,14 @@ Launch a design step (inline, not a sub-agent — the orchestrator does this):
 4. Call `mcp__paper__get_screenshot` for each artboard to capture the design
 5. Call `mcp__paper__finish_working_on_nodes` when done
 
-Save each screenshot to `reports/plan-screenshots/`:
+Save each screenshot to `reports/plan-screenshots/` AND store the base64 data for embedding in the HTML:
 ```bash
 mkdir -p reports/plan-screenshots
 ```
 
-For each screenshot returned as base64, save it:
+For each screenshot captured from Paper via `mcp__paper__get_screenshot`:
+1. The MCP tool returns base64 image data
+2. Save the PNG file:
 ```bash
 python -c "
 import base64
@@ -141,6 +143,7 @@ with open('reports/plan-screenshots/{feature_slug}-{view_name}.png', 'wb') as f:
     f.write(data)
 "
 ```
+3. **CRITICAL: Store the base64 string in memory** — you MUST embed it directly into the HTML plan in Step 1.3. Do NOT just reference the file path. The HTML must contain the actual base64 data as `<img src="data:image/png;base64,{base64_data}">`.
 
 **If Paper is NOT available:** Skip mockups. The plan HTML will still be generated but without design screenshots.
 
@@ -154,14 +157,29 @@ with open('reports/plan-screenshots/{feature_slug}-{view_name}.png', 'wb') as f:
 [Create] Generating plan document...
 ```
 
-Write `reports/feature-plan.html` — a self-contained HTML document that the user opens in their browser to review the full plan with embedded design screenshots.
+Write `reports/feature-plan.html` — a self-contained HTML document with ALL design screenshots embedded directly as base64 images. The user must be able to see the designs by opening this single HTML file — they should NOT need to open Paper separately.
+
+**Embedding screenshots: DO NOT just link to files or tell the user to open Paper.** Read each screenshot from `reports/plan-screenshots/*.png`, convert to base64, and embed as `<img src="data:image/png;base64,...">` directly in the HTML. Use this Python snippet to read and convert:
+
+```bash
+python -c "
+import base64, glob
+for f in sorted(glob.glob('reports/plan-screenshots/*.png')):
+    with open(f, 'rb') as img:
+        b64 = base64.b64encode(img.read()).decode()
+    print(f'FILE:{f}')
+    print(f'BASE64:{b64[:50]}...')  # confirms it loaded
+"
+```
+
+Or if you already have the base64 from the Paper MCP screenshot call, embed it directly — do not lose it between steps.
 
 **The HTML plan MUST include:**
 
 1. **Header** — feature name, date, detected role, project type
 2. **Feature Summary** — 1-2 paragraph description of what will be built
 3. **Scope Badge** — UI-only / Backend-only / Full-stack
-4. **Design Mockups** (if created) — each Paper screenshot embedded as base64 `<img>`, with:
+4. **Design Mockups** (if created) — each Paper screenshot **embedded as base64 `<img>` tags directly in the HTML**, with:
    - Title describing what the screenshot shows (e.g., "Task List Page — New URL Field")
    - Description of the design decisions made
    - Annotations noting key elements
@@ -186,20 +204,35 @@ Write `reports/feature-plan.html` — a self-contained HTML document that the us
 - Print-friendly
 - Self-contained (all images as base64)
 
-### Step 1.4 — Present Plan & Confirm
+### Step 1.4 — Auto-Open Plan in Browser & Confirm
 
-Present the plan to the user with a link to the HTML file using `AskUserQuestion`:
+**MANDATORY — automatically open the HTML plan in the user's default browser BEFORE asking the question.**
 
-> "I've created a detailed plan for this feature:
+```bash
+# Open the plan in the default browser
+# Windows:
+start "" "reports/feature-plan.html" 2>/dev/null || \
+# macOS:
+open "reports/feature-plan.html" 2>/dev/null || \
+# Linux:
+xdg-open "reports/feature-plan.html" 2>/dev/null || \
+echo "Could not auto-open. Please open reports/feature-plan.html manually."
+```
+
+```
+[Create] Plan opened in your browser. Review it and then tell me how to proceed.
+```
+
+Then present the question using `AskUserQuestion`:
+
+> "I've created a detailed plan for this feature and opened it in your browser.
 >
 > **Feature:** {summary}
 > **Scope:** {UI-only / Backend-only / Full-stack}
 > **Files affected:** {count} to create, {count} to modify
-> {If mockups:} **Design mockups:** {count} views designed in Paper
+> {If mockups:} **Design mockups:** {count} views — visible in the plan HTML
 >
-> **Open the plan:** `reports/feature-plan.html` — open in your browser to see the full plan with design mockups.
->
-> What would you like to do?"
+> Review the plan in your browser (with design screenshots), then choose:
 
 Options:
 1. **Accept & implement** — Implement exactly as planned
