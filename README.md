@@ -4,6 +4,8 @@ An AI development team built on [Claude Code](https://claude.ai/claude-code) —
 
 No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines.
 
+*Last updated: 2026-03-22*
+
 > **[Full Command Reference Guide](https://baard-ovrebo.github.io/claude-agent-team/command-guide.html)** — comprehensive interactive documentation for every command with usage examples, flags, relationships, and architecture diagrams.
 >
 > Also available: [Architecture Deep Dive](https://baard-ovrebo.github.io/claude-agent-team/agent-architecture-confluence.html) | [Flow Diagrams](https://baard-ovrebo.github.io/claude-agent-team/new-feature-diagram.html) | [Skills Reference](https://baard-ovrebo.github.io/claude-agent-team/skills-documentation.html)
