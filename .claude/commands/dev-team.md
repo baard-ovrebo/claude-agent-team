@@ -65,6 +65,14 @@ When a scan round produces zero findings and all tests pass, launch the Document
 
 The master report must use professional styling (dark theme, color-coded severity, collapsible sections).
 
+### MANDATORY STATUS REPORTING
+**Print a status line before EVERY major step.** Format:
+```
+[{Agent_Name}] {what is happening now}
+```
+The user must see what you are doing in real time. Print status BEFORE starting each step, not after. When spawning sub-agents, include this instruction in their prompt so they also report status with their agent name (e.g., [Security Auditor], [Frontend Developer], [Backend Developer], [Code Analyst], [Test Engineer], [UI Designer], [Documentation Lead]).
+
+
 ## Rules
 - ALWAYS use the Agent tool to spawn sub-agents — never do the work yourself
 - Launch independent agents in PARALLEL (Security + Quality scan together)

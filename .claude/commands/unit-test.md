@@ -29,13 +29,13 @@ If the argument contains a project name (not a file path), resolve it:
 
 **Known projects** (from prior work in this session or memory):
 - Look for an `INDEX.md` in the current directory — it maps project names to paths
-- Check if the name matches a directory under common parent paths (e.g., `/path/to/your/projects/`, `/path/to/your/projects/`, `/path/to/your/projects/`)
+- Check if the name matches a directory under common parent paths (e.g., `D:\Kunder\247\Finago\`, `D:\Kunder\247\`, `D:\Kunder\BK Hengeren\Projects\`)
 - Check the configured additional working directories
 
 **Common project name resolution examples:**
-- `control-backend-api` → `/path/to/your/projects/control-backend-api`
-- `control-frontend` → `/path/to/your/projects/control-frontend`
-- `gateway-backend` → `/path/to/your/projects/gateway-backend`
+- `control-backend-api` → `D:\Kunder\247\Finago\control-backend-api`
+- `control-frontend` → `D:\Kunder\247\Finago\control-frontend`
+- `gateway-backend` → `D:\Kunder\BK Hengeren\Projects\gateway-backend`
 
 **If the name cannot be resolved**, ask the user:
 ```
@@ -753,6 +753,14 @@ Present a summary before going to PHASE 5:
 Then proceed to **PHASE 5** (Generate Report) — include the fix-ignored results in the report.
 
 ---
+
+### MANDATORY STATUS REPORTING
+**Print a status line before EVERY major step.** Format:
+```
+[{Agent_Name}] {what is happening now}
+```
+The user must see what you are doing in real time. Print status BEFORE starting each step, not after. When spawning sub-agents, include this instruction in their prompt so they also report status with their agent name (e.g., [Security Auditor], [Frontend Developer], [Backend Developer], [Code Analyst], [Test Engineer], [UI Designer], [Documentation Lead]).
+
 
 ## Rules
 
