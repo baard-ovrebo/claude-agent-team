@@ -435,61 +435,85 @@ await browser.close();
 
 ---
 
-## PHASE 4: Generate Verification Report
+## PHASE 4: Generate Verification Report (HTML)
+
+**MANDATORY — always generate a polished HTML report with embedded screenshots.**
 
 ```
-[Verify] Generating verification report...
+[Verify] Generating HTML verification report with screenshots...
 ```
 
-### Step 4.1 — Compile Results
+### Step 4.1 — Collect Screenshots
 
-Write `reports/verification-report.md`:
-
-```markdown
----
-type: verification
-date: {YYYY-MM-DD HH:MM:SS}
-target: {report title or description}
-status: {PASSED / FAILED / PARTIAL}
-steps_total: {count}
-steps_passed: {count}
-steps_failed: {count}
----
-
-# Verification Report: {title}
-
-## Summary
-- **Status:** {PASSED / FAILED / PARTIAL}
-- **Steps:** {passed}/{total} passed
-- **Target:** {what was being verified}
-- **Application:** {frontend URL}
-- **Test user:** {username}
-
-## Results
-
-### Step 1: {description} — {PASS/FAIL}
-{details}
-**Before:** ![before](verification-screenshots/{KEY}-step1-before.png)
-**After:** ![after](verification-screenshots/{KEY}-step1-after.png)
-
-### Step 2: {description} — {PASS/FAIL}
-...
-
-## Failed Steps
-{If any failed, detail what went wrong and what was expected}
-
-## Screenshots
-{List all screenshots taken with descriptions}
+Find all screenshots taken during this verification:
+```bash
+ls -1 reports/verification-screenshots/*.png 2>/dev/null
 ```
 
-### Step 4.2 — Attach to Original Report
+### Step 4.2 — Generate the HTML Report
 
-If the verification was triggered from a `/jira`, `/create`, or `/bug` report, append the verification results to that report:
+Write `reports/verification-report.html` — a self-contained HTML file with ALL screenshots embedded as base64 images so the report can be opened standalone without needing the screenshot files.
 
-- Read the original report file
-- Add a "Verification Results" section
-- Embed or link the screenshots
-- Update the status
+**Use Python to convert screenshots to base64 and embed them:**
+
+```bash
+python -c "
+import base64, glob, os
+
+screenshots = sorted(glob.glob('reports/verification-screenshots/*.png'))
+images_html = ''
+for ss in screenshots:
+    with open(ss, 'rb') as f:
+        b64 = base64.b64encode(f.read()).decode()
+    name = os.path.basename(ss).replace('.png', '').replace('-', ' ').replace('_', ' ').title()
+    images_html += f'''
+    <div class=\"screenshot-card\">
+      <div class=\"screenshot-label\">{name}</div>
+      <img src=\"data:image/png;base64,{b64}\" alt=\"{name}\">
+    </div>
+    '''
+
+print(images_html)
+" > /tmp/screenshots-html.txt
+```
+
+**The HTML report MUST include:**
+
+1. **Header** — "E2E Verification Report", date, target feature/bug name, overall status badge (PASSED green / FAILED red / PARTIAL amber)
+
+2. **Summary Dashboard** — total steps, passed count, failed count, application URL, test user
+
+3. **Results Table** — for each verification step:
+   - Step number
+   - Description
+   - Status badge (PASS green / FAIL red)
+   - Details (what was checked, expected vs actual)
+
+4. **Screenshots Gallery** — ALL screenshots embedded in the HTML as base64 `<img>` tags, each with:
+   - Screenshot name/label
+   - Which step it belongs to
+   - Full-size image (clickable to zoom if needed)
+   - Arranged chronologically (step 1 first, step N last)
+
+5. **Failed Steps Detail** (if any) — expanded section showing what went wrong, expected vs actual, with the failure screenshot prominently displayed
+
+6. **Technical Details** — collapsible section with: project profile used, frontend URL, auth type, viewport size
+
+**Styling:**
+- Clean light theme (white background, system font)
+- Green header bar if PASSED, red if FAILED, amber if PARTIAL
+- Screenshots displayed as cards with subtle borders and labels
+- Responsive — screenshots resize to fit screen
+- Print-friendly — screenshots included in print output
+- Status badges: green (#22c55e) for PASS, red (#ef4444) for FAIL
+
+**The report must be SELF-CONTAINED** — all images embedded as base64 so it works when opened from any location, shared via email, or uploaded to Jira. No external file dependencies.
+
+### Step 4.3 — Attach to Original Report
+
+If the verification was triggered from a `/jira`, `/create`, or `/bug` report:
+- Note the verification status and link to `reports/verification-report.html` in the original report
+- If this is a Jira ticket, the verification report HTML can be uploaded as an attachment
 
 ### Step 4.3 — Save to Unprocessed Reports (for /changelog)
 
@@ -501,6 +525,8 @@ cp reports/verification-report.md ".claude/unprocessed_reports/$(date +%Y-%m-%d_
 
 ### Step 4.4 — Present Results
 
+**Always show the report link prominently:**
+
 ```
 ## Verification Complete
 
@@ -508,16 +534,19 @@ cp reports/verification-report.md ".claude/unprocessed_reports/$(date +%Y-%m-%d_
 **Status:** {PASSED / FAILED / PARTIAL}
 **Results:** {passed}/{total} steps passed
 
+**Report:** `reports/verification-report.html` — open in browser to see all screenshots
+
 {If PASSED:}
-All verification steps passed. Screenshots saved to reports/verification-screenshots/
+All verification steps passed. {count} screenshots embedded in the report.
 
 {If FAILED:}
 **Failed steps:**
 - Step {N}: {description} — {what went wrong}
 
-**Screenshots:** reports/verification-screenshots/
-**Report:** reports/verification-report.md
+Open `reports/verification-report.html` in your browser to see the full visual evidence.
 ```
+
+**IMPORTANT:** Always tell the user the exact path to the HTML report and that they should open it in a browser. This is the primary deliverable of `/verify`.
 
 ---
 
