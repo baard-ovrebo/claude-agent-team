@@ -251,6 +251,23 @@ Bug fixed: {short title}
 
 ---
 
+
+### MANDATORY — UNDERSTAND EXISTING CODE BEFORE WRITING
+**Before writing ANY code, you MUST first read and understand the existing codebase.** This applies to every agent that creates or modifies code. Specifically:
+
+1. **Read existing files first** — before creating a new file, read similar existing files to understand patterns
+2. **Reuse existing classes, methods, utilities** — search for existing implementations before writing new ones. Do NOT duplicate functionality that already exists.
+3. **Match naming conventions** — variable names, function names, class names, file names must follow the project's existing conventions (camelCase, snake_case, PascalCase, etc.)
+4. **Match code style** — indentation (tabs vs spaces), bracket placement, quote style (single vs double), semicolons, line length
+5. **Match architecture patterns** — where things are placed (controllers/, services/, utils/), how imports are structured, how errors are handled, how logging is done
+6. **Match existing API patterns** — if the project uses a specific response format, error format, or middleware pattern, follow it exactly
+7. **Use existing dependencies** — do NOT add new packages if an existing dependency can do the job
+8. **Follow existing test patterns** — if tests use a specific setup/teardown pattern, mocking approach, or assertion style, match it
+9. **Read configuration files** — understand the project's build config, linting rules, TypeScript settings, etc.
+
+**When spawning sub-agents**, include this instruction in their prompt:
+> "Before writing any code, read at least 3-5 existing files in the area you are working on. Identify: naming conventions, code style, architecture patterns, existing utilities you can reuse, and how similar features are implemented. Your code MUST look like it was written by the same developer who wrote the existing code."
+
 ### MANDATORY STATUS REPORTING
 **Print a status line before EVERY major step.** Format:
 ```
