@@ -752,7 +752,7 @@ Orchestrator ──── curl ────▶ Jira REST API (fetch ticket)
 </div>
 
 <!-- ══════════════════════════════════════ -->
-<h2 id="commands">The Command System: 21 Slash Commands</h2>
+<h2 id="commands">The Command System: 26 Slash Commands</h2>
 
 <p>Each command is a Markdown file in <code>.claude/commands/</code>. Some are standalone (single agent, single task), others are orchestrators that spawn multiple agents across phases. Here's the full inventory:</p>
 
@@ -1054,6 +1054,40 @@ Orchestrator ──── curl ────▶ Jira REST API (fetch ticket)
     <tr><td><code>/docker-test</code></td><td>Full integration test suite against live container.</td></tr>
     <tr><td><code>/docker-teardown</code></td><td>Gracefully tear down containers, report freed resources.</td></tr>
     <tr><td><code>/full-pipeline</code></td><td>All of the above: dev-team loop + Playwright + Docker build/deploy/test + master report.</td></tr>
+  </tbody>
+</table>
+
+<h3>Universal Commands <span class="lozenge loz-blue">Any Project</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>/create "description"</code></td><td>Context-aware feature creator. Reads ProjectType from .env, adapts role (Game/App/SaaS Dev), designs in Paper, generates HTML plan with mockup screenshots (auto-opens in browser), implements, verifies with Playwright.</td></tr>
+    <tr><td><code>/create-project "description"</code></td><td>Full project creator from scratch. Asks clarifying questions, designs architecture + UI in Paper, generates HTML plan, builds with full agent team (backend + frontend + security + tests + Docker), delivers running application.</td></tr>
+    <tr><td><code>/bug "description"</code></td><td>Context-aware bug fixer. Analyzes pasted screenshots, diagnoses root cause, applies minimum fix, verifies with Playwright, saves timestamped report.</td></tr>
+    <tr><td><code>/verify</code></td><td>E2E verification with Playwright. Uses project profile (.claude/project-profile.json) for login and navigation. Takes before/after screenshots, generates self-contained HTML report with clickable lightbox. Auto-checks profile completeness before running.</td></tr>
+    <tr><td><code>/changelog</code></td><td>Reads reports from .claude/unprocessed_reports/ (created by /create and /bug), generates beautiful HTML changelog with features (blue) and bug fixes (amber). Moves processed reports to prevent double-counting.</td></tr>
+  </tbody>
+</table>
+
+<h3>Git Operations <span class="lozenge loz-green">Git</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>/git sync {branch}</code></td><td>Merge latest from a branch into current. Pre-flight checks, fetch, merge. With --fix-merge-errors: AI-powered per-file conflict resolution. With --all: sync all projects.</td></tr>
+    <tr><td><code>/git status</code></td><td>Quick branch overview: ahead/behind, uncommitted changes, stashes, last commit.</td></tr>
+  </tbody>
+</table>
+
+<h3>Repository Onboarding <span class="lozenge loz-cyan">Onboarding</span></h3>
+
+<table>
+  <thead><tr><th>Command</th><th>What It Does</th></tr></thead>
+  <tbody>
+    <tr><td><code>/repo-setup {url}</code></td><td>Clone, analyze stack, install deps, configure env, build, test, start. Produces 12-section HTML setup guide. Detects dependent repos and offers to set them up too.</td></tr>
+    <tr><td><code>/repo-setup {org_url}</code></td><td>Organization scan: fetches all repos via GitHub API, maps relationships (depends-on, frontend-for, shared-library), calculates startup order, generates architecture documentation with CSS diagrams.</td></tr>
+    <tr><td><code>/repo-setup --auto-setup</code></td><td>Auto-clone, install, build, test all repos without prompting. Compatible with --search filter.</td></tr>
   </tbody>
 </table>
 
@@ -1422,6 +1456,13 @@ Orchestrator ──── curl ────▶ Jira REST API (fetch ticket)
     <tr><td><code>/docker-deploy</code></td><td>DevOps</td><td>1</td><td>reports/docker-deploy-report.md</td></tr>
     <tr><td><code>/docker-test</code></td><td>DevOps</td><td>1</td><td>reports/docker-integration-test-report.md</td></tr>
     <tr><td><code>/docker-teardown</code></td><td>DevOps</td><td>1</td><td>reports/docker-teardown-report.md</td></tr>
+    <tr><td><code>/create "desc"</code></td><td>Universal</td><td>0-1</td><td>reports/feature-plan.html + .claude/unprocessed_reports/</td></tr>
+    <tr><td><code>/create-project "desc"</code></td><td>Universal</td><td>5+</td><td>reports/project-plan.html + reports/project-delivery-report.html</td></tr>
+    <tr><td><code>/bug "desc"</code></td><td>Universal</td><td>0-1</td><td>.claude/unprocessed_reports/</td></tr>
+    <tr><td><code>/verify</code></td><td>Testing</td><td>0</td><td>reports/verification-report.html</td></tr>
+    <tr><td><code>/changelog</code></td><td>Documentation</td><td>0</td><td>reports/changelog.html</td></tr>
+    <tr><td><code>/git sync {branch}</code></td><td>Git Ops</td><td>0-1</td><td>reports/git-sync-report.md</td></tr>
+    <tr><td><code>/repo-setup {url}</code></td><td>Onboarding</td><td>1-3</td><td>reports/repo-setup-guide.html</td></tr>
   </tbody>
 </table>
 
@@ -1429,7 +1470,7 @@ Orchestrator ──── curl ────▶ Jira REST API (fetch ticket)
 
 <div class="panel panel-success">
   <h4>Reproducing this setup</h4>
-  <p>Everything described in this document runs on <strong>Claude Code (Opus 4.6)</strong> with no custom infrastructure. The entire system is 21 Markdown files in <code>.claude/commands/</code>, an <code>.env</code> file with Jira credentials, and two MCP server connections (JAM + Paper). There is no server, no database, no deployment pipeline. If you have Claude Code, you can copy the Markdown files and have the same team.</p>
+  <p>Everything described in this document runs on <strong>Claude Code (Opus 4.6)</strong> with no custom infrastructure. The entire system is 26 Markdown files in <code>.claude/commands/</code>, an <code>.env</code> file with Jira credentials, and two MCP server connections (JAM + Paper). There is no server, no database, no deployment pipeline. If you have Claude Code, you can copy the Markdown files and have the same team.</p>
 </div>
 
 </div><!-- end .page-container -->

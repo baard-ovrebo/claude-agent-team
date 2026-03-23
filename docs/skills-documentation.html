@@ -386,6 +386,29 @@
     <tr><td class="cmd">/deps</td><td>Scan project dependencies for CVEs, outdated packages, and license risks &mdash; health grade A&ndash;F, auto-fix, and CI config export</td></tr>
     <tr><td class="cmd">/security-audit</td><td>Full security audit of the codebase</td></tr>
   </table>
+
+  <!-- Universal -->
+  <div class="qr-group-label" style="color:#6366f1;border-color:#6366f1;">Universal</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/create</td><td>Context-aware feature creator &mdash; adapts role to project type, designs in Paper, generates HTML plan, implements, verifies with Playwright</td></tr>
+    <tr><td class="cmd">/create-project</td><td>Full project creator from scratch &mdash; questions, Paper design, HTML plan, full agent team build, test, Docker, deliver</td></tr>
+    <tr><td class="cmd">/bug</td><td>Context-aware bug fixer &mdash; analyzes screenshots, diagnoses root cause, fixes, verifies with Playwright</td></tr>
+    <tr><td class="cmd">/verify</td><td>E2E Playwright verification with project profile, screenshots, self-contained HTML report with clickable lightbox</td></tr>
+    <tr><td class="cmd">/changelog</td><td>Generate HTML changelog from /create and /bug reports</td></tr>
+  </table>
+
+  <!-- Git -->
+  <div class="qr-group-label" style="color:#22c55e;border-color:#22c55e;">Git Operations</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/git sync</td><td>Merge branch into current &mdash; pre-flight checks, AI conflict resolution with --fix-merge-errors, multi-project with --all</td></tr>
+    <tr><td class="cmd">/git status</td><td>Quick branch overview: ahead/behind, uncommitted changes, stashes</td></tr>
+  </table>
+
+  <!-- Onboarding -->
+  <div class="qr-group-label" style="color:#06b6d4;border-color:#06b6d4;">Repository Onboarding</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/repo-setup</td><td>Clone, analyze, install, build, test any repo. Org scan mode for GitHub orgs. --auto-setup, --search, --local-scan</td></tr>
+  </table>
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
@@ -1090,11 +1113,125 @@ Database: SQL Server</div>
   </ul>
 </div>
 
+<!-- ═══════════════════════════════════════════ -->
+<!--        UNIVERSAL COMMANDS                 -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="universal"><span class="dot" style="background:#6366f1;"></span>Universal Commands</h2>
+
+<div class="skill-card" style="border-left:3px solid #6366f1;">
+  <h3><code>/create</code> Feature Creator</h3>
+  <p class="desc">Context-aware feature creator that adapts to any project type. Reads ProjectType from .claude/.env, assumes the matching senior role, designs in Paper, generates an HTML plan with embedded mockup screenshots, auto-opens in browser for user approval, implements, and verifies with Playwright.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/create "Add dark mode toggle to settings"
+/create "REST endpoint for bulk invoice export"
+/create "Monsters that hunt the player using pathfinding"</div>
+  <h4>Key Features</h4>
+  <ul>
+    <li>Adapts role: GAME (Unity/Unreal/Godot Dev), APPLICATION (React/.NET/Java), SAAS, API, MOBILE</li>
+    <li>Designs UI in Paper via MCP, embeds screenshots as base64 in HTML plan</li>
+    <li>Auto-opens plan in browser before asking user to approve</li>
+    <li>Reads existing code patterns before writing (mandatory codebase understanding)</li>
+    <li>Auto-offers Playwright E2E verification after implementation</li>
+    <li>Saves timestamped report to .claude/unprocessed_reports/ for /changelog</li>
+  </ul>
+</div>
+
+<div class="skill-card" style="border-left:3px solid #6366f1;">
+  <h3><code>/create-project</code> Project Creator</h3>
+  <p class="desc">Creates a complete project from scratch. Asks clarifying questions, designs architecture and UI in Paper, generates HTML plan, then orchestrates the full agent team: Backend Dev, Frontend Dev, Security Auditor, Quality Engineer, Test Engineer, Code Analyst, and Documentation Lead.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/create-project "Task management app with Kanban boards"
+/create-project "SaaS dashboard for IoT monitoring"
+/create-project "2D platformer with procedural levels"</div>
+  <h4>Pipeline (10 steps)</h4>
+  <ul>
+    <li>Ask questions &rarr; Design architecture &rarr; Paper UI mockups (3-5+ screens)</li>
+    <li>Generate HTML plan with screenshots &rarr; Auto-open in browser &rarr; User approval</li>
+    <li>Scaffold project &rarr; Backend + Frontend agents (parallel) &rarr; Code review</li>
+    <li>Quality loop (scan, fix, test, re-scan) &rarr; Playwright verification &rarr; Docker (optional)</li>
+    <li>Delivery report with all screenshots</li>
+  </ul>
+</div>
+
+<div class="skill-card" style="border-left:3px solid #6366f1;">
+  <h3><code>/bug</code> Bug Fixer</h3>
+  <p class="desc">Context-aware bug fixer. Same role adaptation as /create. Analyzes pasted screenshots, diagnoses root cause, applies minimum fix, verifies with Playwright.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/bug "Player falls through floor when jumping near walls"
+/bug "Login shows 500 error after session timeout"</div>
+</div>
+
+<div class="skill-card" style="border-left:3px solid #6366f1;">
+  <h3><code>/verify</code> E2E Verification</h3>
+  <p class="desc">Playwright-based verification that features work and bugs are fixed. Uses a project profile (.claude/project-profile.json) for login and navigation. Takes before/after screenshots. Generates self-contained HTML report with clickable lightbox.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/verify                                    # Auto-verify latest report
+/verify reports/jira-FO-2847-report.html   # Verify specific report
+/verify setup                              # Create/update project profile
+/verify "Check login redirects properly"   # Manual verification</div>
+  <h4>Key Features</h4>
+  <ul>
+    <li>Project profile: login URL, form selectors, test credentials (built interactively on first run)</li>
+    <li>Auth types: form login, OAuth/SSO (saved sessions), API keys, basic auth, no auth</li>
+    <li>Profile completeness check: asks for missing fields before running</li>
+    <li>All screenshots embedded as base64 in HTML report (self-contained)</li>
+    <li>Auto-called by /create and /bug after implementation</li>
+  </ul>
+</div>
+
+<div class="skill-card" style="border-left:3px solid #6366f1;">
+  <h3><code>/changelog</code> Changelog Generator</h3>
+  <p class="desc">Reads reports from .claude/unprocessed_reports/ and generates a polished HTML changelog. Features (blue cards) and bug fixes (amber/red cards) visually distinct. Moves processed reports to prevent double-counting.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/changelog</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--        GIT & ONBOARDING                   -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="git-ops"><span class="dot" style="background:#22c55e;"></span>Git &amp; Repository Onboarding</h2>
+
+<div class="skill-card" style="border-left:3px solid #22c55e;">
+  <h3><code>/git</code> Git Operations</h3>
+  <p class="desc">Branch syncing with AI-powered conflict resolution and multi-project support.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/git sync develop
+/git sync develop --fix-merge-errors
+/git sync develop --all
+/git status</div>
+  <h4>Key Features</h4>
+  <ul>
+    <li>Pre-flight checks: uncommitted changes, stash option, branch existence</li>
+    <li>AI conflict resolution: per-file analysis (both-needed, incoming, current, needs-human-review)</li>
+    <li>Lock file regeneration: npm, yarn, poetry, go, dotnet</li>
+    <li>Multi-project sync across frontend + backend</li>
+  </ul>
+</div>
+
+<div class="skill-card" style="border-left:3px solid #06b6d4;">
+  <h3><code>/repo-setup</code> Repository Onboarding</h3>
+  <p class="desc">Analyzes and sets up any repository or entire GitHub organization for local development.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/repo-setup https://github.com/org/project.git
+/repo-setup https://github.com/nexum-fo
+/repo-setup https://github.com/nexum-fo --auto-setup --search "API"
+/repo-setup --local-scan D:\Projects</div>
+  <h4>Key Features</h4>
+  <ul>
+    <li>Single repo: clone, analyze, install, build, test, start</li>
+    <li>Org scan: fetch all repos, map relationships, architecture diagram, startup order</li>
+    <li>GitHub account switching: lists all gh accounts, user picks</li>
+    <li>--auto-setup: skip prompts, process everything in dependency order</li>
+    <li>--search: filter repos by name, description, topics, README content</li>
+    <li>12-section HTML setup guide with prerequisites, architecture, testing</li>
+  </ul>
+</div>
+
 </div><!-- end .container -->
 
 <!-- ═══════════ FOOTER ═══════════ -->
 <footer class="footer">
-  Generated on March 18, 2026 &nbsp;&middot;&nbsp; Powered by <strong>Claude Code</strong>
+  Last updated: March 23, 2026 &nbsp;&middot;&nbsp; Powered by <strong>Claude Code</strong>
 </footer>
 
 </body>
