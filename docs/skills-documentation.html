@@ -387,6 +387,12 @@
     <tr><td class="cmd">/security-audit</td><td>Full security audit of the codebase</td></tr>
   </table>
 
+  <!-- Reporting -->
+  <div class="qr-group-label" style="color:#f59e0b;border-color:#f59e0b;">Reporting</div>
+  <table class="qr-table">
+    <tr><td class="cmd">/report</td><td>Analyze all branch changes, generate Jira-ready HTML report with categorized changes and QA testing instructions. Optional upload to Jira.</td></tr>
+  </table>
+
   <!-- Universal -->
   <div class="qr-group-label" style="color:#6366f1;border-color:#6366f1;">Universal</div>
   <table class="qr-table">
@@ -1110,6 +1116,37 @@ Database: SQL Server</div>
     <li>Iterative &mdash; re-runs until all tests pass</li>
     <li>Interactive HTML report at <code>reports/playwright-report/index.html</code></li>
     <li>Summary at <code>reports/playwright-test-report.md</code></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--        REPORTING                          -->
+<!-- ═══════════════════════════════════════════ -->
+<h2 class="section-title" id="reporting"><span class="dot" style="background:#f59e0b;"></span>Reporting</h2>
+
+<div class="skill-card" style="border-left:3px solid #f59e0b;">
+  <h3><code>/report</code> Change Report Generator</h3>
+  <p class="desc">Analyzes ALL code changes on the current branch (vs main/develop), categorizes them, and generates a comprehensive HTML report with detailed QA testing instructions. Works for both AI-assisted and manual changes. Can upload directly to Jira.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/report
+/report FO-2847
+/report --compare develop
+/report --since abc1234</div>
+  <h4>Report Contents</h4>
+  <ul>
+    <li>Executive summary with risk assessment</li>
+    <li>Changes categorized: new feature, bug fix, refactoring, config, database, styling, tests</li>
+    <li>Screenshots of affected pages (if app running + Playwright)</li>
+    <li>Step-by-step QA test cases with preconditions, exact steps, expected results, priority</li>
+    <li>Checkboxes for testers to mark off completed tests</li>
+    <li>Commit history and technical details</li>
+    <li>Auto-detects Jira ticket from branch name (e.g., feature/FO-2847)</li>
+  </ul>
+  <h4>Jira Upload</h4>
+  <ul>
+    <li>Uploads HTML report as attachment</li>
+    <li>Uploads screenshots as attachments</li>
+    <li>Posts summary comment on ticket</li>
   </ul>
 </div>
 

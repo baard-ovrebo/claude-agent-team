@@ -1,6 +1,6 @@
 # Claude Agent Team
 
-An AI development team built on [Claude Code](https://claude.ai/claude-code) — 26 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
+An AI development team built on [Claude Code](https://claude.ai/claude-code) — 27 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
 
 No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines.
 
@@ -49,6 +49,8 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | `/bug "description"` | Context-aware bug fixer: analyzes screenshots, diagnoses root cause, fixes, verifies with Playwright |
 | `/changelog` | Reads reports from `/create` and `/bug`, generates beautiful HTML changelog, moves to processed |
 | `/create-project "description"` | Full project creator: questions → Paper design → HTML plan → build with full agent team → test → verify → deliver |
+| `/report` | Analyze all branch changes, generate Jira-ready HTML report with QA testing instructions, optional upload to Jira ticket |
+| `/report FO-2847` | Same + auto-upload report and screenshots to the specified Jira ticket |
 | `/verify` | E2E verification with Playwright — uses project profile for login, takes before/after screenshots, generates HTML report with clickable lightbox |
 
 ### Feature Development
@@ -260,6 +262,7 @@ Every agent prints status lines before each major step:
     create-project.md    # Full project creator (idea to running app)
     bug.md               # Universal bug fixer (role-adaptive)
     verify.md            # E2E Playwright verification with project profile
+    report.md            # Branch change report with QA test cases + Jira upload
     changelog.md         # Changelog generator from /create and /bug reports
     repo-setup.md        # Repository onboarding & org scanner
     unit-test.md         # Unit test engineer (9 stacks, --fix-ignored)

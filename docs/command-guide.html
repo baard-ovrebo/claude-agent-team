@@ -92,6 +92,7 @@ li{margin-bottom:4px;}
   <a href="#playwright-test" data-cmd="playwright-test">/playwright-test</a>
   <a href="#deps" data-cmd="deps">/deps</a>
   <a href="#verify" data-cmd="verify">/verify</a>
+  <a href="#report" data-cmd="report">/report</a>
   <div class="cat" style="color:var(--green);">Git Operations</div>
   <a href="#git" data-cmd="git">/git</a>
   <div class="cat" style="color:var(--cyan);">Onboarding</div>
@@ -109,10 +110,10 @@ li{margin-bottom:4px;}
 <!-- HERO -->
 <div class="hero">
   <h1>Claude Agent Team</h1>
-  <p>26 slash commands that orchestrate specialized AI agents for software development</p>
+  <p>27 slash commands that orchestrate specialized AI agents for software development</p>
   <p style="font-size:12px;color:var(--light);margin-top:4px;">Last updated: 2026-03-23</p>
   <div class="stats">
-    <div class="stat"><div class="v">26</div><div class="l">Commands</div></div>
+    <div class="stat"><div class="v">27</div><div class="l">Commands</div></div>
     <div class="stat"><div class="v">12</div><div class="l">Agent Roles</div></div>
     <div class="stat"><div class="v">8</div><div class="l">Categories</div></div>
     <div class="stat"><div class="v">9</div><div class="l">Language Stacks</div></div>
@@ -575,6 +576,37 @@ JIRA_API_TOKEN=your-api-token</pre>
 <p><strong>Output:</strong> <code>reports/verification-report.md</code> + <code>reports/verification-screenshots/*.png</code></p>
 <p><strong>Used by:</strong></p><div class="uses"><a href="#jira">/jira</a><a href="#create">/create</a><a href="#bug">/bug</a></div>
 <p><strong>Requires:</strong> Playwright + running application</p>
+</div>
+
+<div class="cmd-card" style="border-left-color:var(--blue);" id="report">
+<h3><code>/report</code> <span class="badge b-blue">Testing</span></h3>
+<p class="desc">Analyzes ALL code changes on the current branch (vs main/develop), understands what was done and why, generates a Jira-ready HTML report with categorized changes and detailed testing instructions for QA. Works for both AI-assisted and manual code changes.</p>
+<pre>/report                     # Analyze current branch vs auto-detected base
+/report FO-2847             # Analyze and upload to Jira ticket
+/report --compare develop   # Compare against specific branch
+/report --since abc1234     # Changes since a specific commit</pre>
+<details><summary>What the Report Contains</summary><div>
+<ol>
+<li><strong>Executive Summary</strong> &mdash; what the branch does, scope, risk assessment</li>
+<li><strong>Changes by Category</strong> &mdash; new features (green), bug fixes (amber), refactoring (blue), config (gray), database (purple), styling (cyan), tests (teal)</li>
+<li><strong>Files Changed</strong> &mdash; table with file, change type, category, summary</li>
+<li><strong>Screenshots</strong> &mdash; if app is running, captures affected pages with Playwright</li>
+<li><strong>Testing Instructions for QA</strong> &mdash; step-by-step test cases with: preconditions, exact steps, expected results, test data, priority (must/should/nice to test). Checkboxes for testers.</li>
+<li><strong>Commit History</strong> &mdash; all commits with hash, author, date, message</li>
+<li><strong>Technical Details</strong> &mdash; dependencies, migrations, env var changes</li>
+</ol>
+</div></details>
+<details><summary>Jira Upload</summary><div>
+<p>After generating, asks if you want to upload to Jira:</p>
+<ul>
+<li>Uploads HTML report as attachment</li>
+<li>Uploads screenshots as attachments</li>
+<li>Posts summary comment on the ticket</li>
+<li>Auto-detects ticket key from branch name (e.g., <code>feature/FO-2847</code>)</li>
+</ul>
+</div></details>
+<p><strong>Output:</strong> <code>reports/change-report.html</code> (auto-opens in browser)</p>
+<p><strong>Requires:</strong> Git. Optional: Jira credentials for upload, Playwright for screenshots.</p>
 </div>
 
 <!-- ═══════════════════════════════════════ -->
