@@ -1,6 +1,6 @@
 # Claude Agent Team
 
-An AI development team built on [Claude Code](https://claude.ai/claude-code) — 27 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
+An AI development team built on [Claude Code](https://claude.ai/claude-code) — 28 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
 
 No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines.
 
@@ -95,6 +95,9 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | `/repo-setup {org} --search "API"` | Filter org repos by name, description, topics, or README content |
 | `/repo-setup {url} --analyze-only` | Report only, don't install anything |
 | `/repo-setup --local-scan D:\Projects` | Scan repos already on disk instead of cloning |
+| `/impact-scan "description"` | Scan all org repos to find where a change needs to be implemented — per-repo file-level analysis |
+| `/impact-scan "desc" --org {url}` | Same, targeting a specific GitHub org |
+| `/impact-scan "desc" --local-scan {path}` | Same, scanning repos already on disk |
 
 ### Docker Pipeline
 | Command | Description |
@@ -263,6 +266,7 @@ Every agent prints status lines before each major step:
     bug.md               # Universal bug fixer (role-adaptive)
     verify.md            # E2E Playwright verification with project profile
     report.md            # Branch change report with QA test cases + Jira upload
+    impact-scan.md       # Cross-repo impact analysis for change requests
     changelog.md         # Changelog generator from /create and /bug reports
     repo-setup.md        # Repository onboarding & org scanner
     unit-test.md         # Unit test engineer (9 stacks, --fix-ignored)

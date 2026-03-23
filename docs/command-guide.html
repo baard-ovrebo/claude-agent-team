@@ -97,6 +97,7 @@ li{margin-bottom:4px;}
   <a href="#git" data-cmd="git">/git</a>
   <div class="cat" style="color:var(--cyan);">Onboarding</div>
   <a href="#repo-setup" data-cmd="repo-setup">/repo-setup</a>
+  <a href="#impact-scan" data-cmd="impact-scan">/impact-scan</a>
   <div class="cat" style="color:var(--teal);">Docker &amp; Pipeline</div>
   <a href="#full-pipeline" data-cmd="full-pipeline">/full-pipeline</a>
   <a href="#docker-build" data-cmd="docker-build">/docker-build</a>
@@ -110,10 +111,10 @@ li{margin-bottom:4px;}
 <!-- HERO -->
 <div class="hero">
   <h1>Claude Agent Team</h1>
-  <p>27 slash commands that orchestrate specialized AI agents for software development</p>
+  <p>28 slash commands that orchestrate specialized AI agents for software development</p>
   <p style="font-size:12px;color:var(--light);margin-top:4px;">Last updated: 2026-03-23</p>
   <div class="stats">
-    <div class="stat"><div class="v">27</div><div class="l">Commands</div></div>
+    <div class="stat"><div class="v">28</div><div class="l">Commands</div></div>
     <div class="stat"><div class="v">12</div><div class="l">Agent Roles</div></div>
     <div class="stat"><div class="v">8</div><div class="l">Categories</div></div>
     <div class="stat"><div class="v">9</div><div class="l">Language Stacks</div></div>
@@ -669,6 +670,45 @@ JIRA_API_TOKEN=your-api-token</pre>
 <li>GitHub account switching: lists all authenticated <code>gh</code> accounts, user picks one</li>
 </ul></div></details>
 <p><strong>Output:</strong> <code>reports/repo-setup-guide.html</code> (single) or <code>reports/org-documentation.html</code> (org)</p>
+</div>
+
+<div class="cmd-card" style="border-left-color:var(--cyan);" id="impact-scan">
+<h3><code>/impact-scan "description"</code> <span class="badge b-cyan">Onboarding</span></h3>
+<p class="desc">Cross-repository impact scanner. Describes a change you want to make, then scans all repos in an org (or local disk) to find exactly where changes are needed. Produces a detailed HTML report with per-repo file-level change descriptions, dependency chain, and implementation order.</p>
+<pre>/impact-scan "Add product price to payload response for REST public api"
+/impact-scan "Add price field" --org https://github.com/nexum-fo
+/impact-scan "Add price field" --local-scan D:\Projects
+/impact-scan "Add price" --repos backend-api,frontend,shared-types</pre>
+<details><summary>How It Works</summary><div>
+<ol>
+<li><strong>Resolve repos</strong> &mdash; fetch from GitHub org, scan local disk, or use specified repos</li>
+<li><strong>Extract keywords</strong> &mdash; parse the description into entities, actions, layers, search patterns</li>
+<li><strong>Deep scan each repo</strong> &mdash; search for models, DTOs, controllers, endpoints, serializers, tests. Read matching files to understand what they do.</li>
+<li><strong>Classify impact per file</strong> &mdash; change type (add/modify/create), priority (must/should/consider), complexity (simple/medium/complex)</li>
+<li><strong>Map dependencies</strong> &mdash; determine implementation order (shared libs first, then backends, then frontends)</li>
+<li><strong>Generate HTML report</strong> &mdash; impact diagram, per-repo tables with exact files and change descriptions, code snippets</li>
+</ol>
+</div></details>
+<details><summary>Report Contents</summary><div>
+<ul>
+<li>Executive summary with complexity estimate</li>
+<li>CSS impact diagram showing affected vs unaffected repos</li>
+<li>Implementation order with dependency reasoning</li>
+<li>Per-repo detail: file, change type, what to do, priority, complexity, code snippets</li>
+<li>Repos NOT affected (with reasoning)</li>
+<li>Risk assessment and rollback plan</li>
+<li>Suggested PR strategy</li>
+</ul>
+</div></details>
+<details><summary>Next Steps After Scanning</summary><div>
+<ul>
+<li><strong>Start implementing</strong> &mdash; uses /create for each repo in dependency order</li>
+<li><strong>Create Jira tickets</strong> &mdash; one ticket per affected repo with change details + blocked-by links</li>
+<li><strong>Just the report</strong> &mdash; for planning purposes only</li>
+</ul>
+</div></details>
+<p><strong>Output:</strong> <code>reports/impact-scan-report.html</code> (auto-opens in browser)</p>
+<p><strong>Requires:</strong> <code>gh</code> CLI for org scan, otherwise standalone</p>
 </div>
 
 <!-- ═══════════════════════════════════════ -->

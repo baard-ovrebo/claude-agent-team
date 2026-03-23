@@ -410,10 +410,11 @@
     <tr><td class="cmd">/git status</td><td>Quick branch overview: ahead/behind, uncommitted changes, stashes</td></tr>
   </table>
 
-  <!-- Onboarding -->
-  <div class="qr-group-label" style="color:#06b6d4;border-color:#06b6d4;">Repository Onboarding</div>
+  <!-- Onboarding & Impact -->
+  <div class="qr-group-label" style="color:#06b6d4;border-color:#06b6d4;">Repository Onboarding &amp; Impact</div>
   <table class="qr-table">
     <tr><td class="cmd">/repo-setup</td><td>Clone, analyze, install, build, test any repo. Org scan mode for GitHub orgs. --auto-setup, --search, --local-scan</td></tr>
+    <tr><td class="cmd">/impact-scan</td><td>Cross-repo impact analysis &mdash; describe a change, scan all org repos to find exactly where it needs to be implemented. Per-repo file-level detail.</td></tr>
   </table>
 </section>
 
@@ -1270,6 +1271,26 @@ Database: SQL Server</div>
     <li>--auto-setup: skip prompts, process everything in dependency order</li>
     <li>--search: filter repos by name, description, topics, README content</li>
     <li>12-section HTML setup guide with prerequisites, architecture, testing</li>
+  </ul>
+</div>
+
+<div class="skill-card" style="border-left:3px solid #06b6d4;">
+  <h3><code>/impact-scan</code> Cross-Repository Impact Scanner</h3>
+  <p class="desc">Describe a change you want to make, and this command scans all repositories in an organization to find exactly where it needs to be implemented. Produces a detailed HTML report with per-repo file-level change descriptions, dependency chain, implementation order, and risk assessment.</p>
+  <h4>Usage</h4>
+  <div class="code-block">/impact-scan "Add product price to payload response for REST public api"
+/impact-scan "Add price field" --org https://github.com/nexum-fo
+/impact-scan "Add price field" --local-scan D:\Projects
+/impact-scan "Add price" --repos backend-api,frontend,shared-types</div>
+  <h4>Key Features</h4>
+  <ul>
+    <li>Extracts entities, actions, layers from the description automatically</li>
+    <li>Deep search: models, DTOs, controllers, endpoints, serializers, tests</li>
+    <li>Reads matching files to understand what they do (not just keyword grep)</li>
+    <li>Per-file impact classification: change type, priority, complexity</li>
+    <li>Cross-repo dependency mapping and correct implementation order</li>
+    <li>HTML report with impact diagram, code snippets, risk assessment</li>
+    <li>After analysis: can start implementing or create Jira tickets per repo</li>
   </ul>
 </div>
 
