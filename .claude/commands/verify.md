@@ -24,9 +24,94 @@ Check for the project profile:
 cat .claude/project-profile.json 2>/dev/null && echo "PROFILE_EXISTS" || echo "NO_PROFILE"
 ```
 
-**If profile exists:** Load it and proceed.
+**If profile exists:** Load it, then run the **completeness check** (Step 0.2b).
 
 **If no profile exists (or `setup` mode):** Run the **interactive profile builder** (see PHASE 1).
+
+### Step 0.2b — Profile Completeness Check
+
+**MANDATORY — always check that the profile has everything needed before running verification.**
+
+Even if a profile exists, it may be missing critical fields (e.g., credentials were never provided, auth type changed, frontend URL changed). Check each required field:
+
+```bash
+python -c "
+import json, os
+
+with open('.claude/project-profile.json') as f:
+    profile = json.load(f)
+
+missing = []
+
+# Check frontend URL
+if not profile.get('frontend', {}).get('url'):
+    missing.append('Frontend URL (where the app runs, e.g., http://localhost:3000)')
+
+# Check auth config
+auth = profile.get('auth', {})
+auth_type = auth.get('type', '')
+
+if not auth_type:
+    missing.append('Authentication type (form/oauth/apikey/none)')
+elif auth_type == 'form':
+    if not auth.get('loginUrl'):
+        missing.append('Login page URL path (e.g., /login)')
+    if not auth.get('usernameField'):
+        missing.append('Username field CSS selector (e.g., input[name=\"email\"])')
+    if not auth.get('passwordField'):
+        missing.append('Password field CSS selector (e.g., input[type=\"password\"])')
+    if not auth.get('submitButton'):
+        missing.append('Submit button CSS selector (e.g., button[type=\"submit\"])')
+    if not auth.get('testUser'):
+        missing.append('Test username/email for login')
+elif auth_type == 'oauth':
+    if not os.path.exists('.claude/auth-state.json'):
+        missing.append('OAuth session state (need to log in manually once)')
+elif auth_type == 'apikey':
+    pass  # checked via .env below
+
+# Check credentials in .env
+env_path = '.claude/.env'
+env_vars = {}
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            if '=' in line and not line.startswith('#'):
+                k, v = line.strip().split('=', 1)
+                env_vars[k.strip()] = v.strip()
+
+if auth_type == 'form' and not env_vars.get('TEST_USER_PASSWORD'):
+    missing.append('Test user password (stored in .claude/.env as TEST_USER_PASSWORD)')
+if auth_type == 'apikey' and not env_vars.get('TEST_AUTH_TOKEN'):
+    missing.append('API auth token (stored in .claude/.env as TEST_AUTH_TOKEN)')
+
+if missing:
+    print('MISSING:' + '|'.join(missing))
+else:
+    print('COMPLETE')
+"
+```
+
+**If any fields are missing**, ask the user to provide them:
+
+> "Your project profile is missing some information needed for verification:
+>
+> {numbered list of missing items}
+>
+> Please provide the missing details."
+
+For each missing item, ask specifically and update the profile:
+- **Frontend URL**: "What URL does the app run on? (e.g., http://localhost:3000)"
+- **Login details**: "What's the login page URL? What CSS selectors for username/password fields?"
+- **Test credentials**: "What username and password should I use for testing?"
+- **Auto-detect option**: If only selectors are missing, offer: "I can navigate to the login page and auto-detect the form fields. Should I do that?"
+
+After collecting all missing info:
+1. Update `.claude/project-profile.json` with the new fields
+2. Save credentials to `.claude/.env` (NOT the profile JSON)
+3. Confirm: "Profile updated. All fields complete."
+
+**If the profile is complete:** Proceed to Step 0.3.
 
 ### Step 0.3 — Load Verification Target
 

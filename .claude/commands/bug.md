@@ -222,7 +222,9 @@ Options:
 2. **Skip verification** — I'll test manually later
 
 **If "Verify now":**
-- Check for `.claude/project-profile.json` — if missing, run the profile builder
+- Check for `.claude/project-profile.json`:
+  - If missing: run the full profile builder (ask for frontend URL, login details, test credentials)
+  - If exists: run the **completeness check** — verify all fields are populated (frontend URL, auth type, selectors, test user, test password in `.claude/.env`). If ANYTHING is missing, ask the user for it before proceeding. Do NOT attempt to run Playwright with incomplete credentials.
 - Use Playwright to: login, navigate to the area where the bug was, reproduce the original steps, verify the bug is fixed
 - Take screenshots showing the fixed behavior
 - Attach screenshots to the report
