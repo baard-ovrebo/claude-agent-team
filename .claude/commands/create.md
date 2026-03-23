@@ -246,45 +246,163 @@ Options:
 
 ---
 
-## PHASE 2: Implement
+## PHASE 2: BEFORE Screenshots (if app is running and UI changes)
 
-### Step 2.1 — Implement the Feature
+**If the feature involves UI changes AND the app is running**, capture screenshots of the current state BEFORE implementation so we can do a before/after comparison later.
 
-Create and modify files as planned. Follow the project's existing patterns:
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null
+```
+
+If running, use Playwright to capture BEFORE screenshots of the affected pages:
+```bash
+mkdir -p reports/before-screenshots
+```
+
+```javascript
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  // Login if needed (use project profile)
+  // Navigate to each affected page and screenshot
+  await page.screenshot({ path: 'reports/before-screenshots/{page}-BEFORE.png', fullPage: true });
+  await browser.close();
+})();
+```
+
+If not running, skip and proceed.
+
+---
+
+## PHASE 3: Implement
+
+### Step 3.0 — Determine Implementation Strategy
+
+Based on the scope from the plan, decide how to implement:
+
+**Small feature (1-3 files, single area):**
+- Implement directly — no sub-agents needed
+- YOU write the code yourself
+
+**Medium feature (4-10 files, single stack):**
+- Implement directly, but run code analysis after
+
+**Large feature (10+ files, or full-stack with both frontend and backend changes):**
+- Launch **parallel agents** for efficiency:
+
+```
+[Create] This is a large feature — launching parallel agents...
+```
+
+If full-stack, launch **Frontend Developer** and **Backend Developer** agents in parallel:
+
+**Frontend Agent:**
+> You are a Senior {frontend_framework} Developer. Implement the frontend changes for this feature.
+> Read the plan at `reports/feature-plan.html`.
+> Read at least 3-5 existing files to understand patterns before writing.
+> Your code MUST look like it was written by the same developer who wrote the existing code.
+> Write your report to `reports/implementation-frontend.md`.
+
+**Backend Agent:**
+> You are a Senior {backend_framework} Developer. Implement the backend changes for this feature.
+> Read the plan at `reports/feature-plan.html`.
+> Read at least 3-5 existing files to understand patterns before writing.
+> Your code MUST look like it was written by the same developer who wrote the existing code.
+> Write your report to `reports/implementation-backend.md`.
+
+### Step 3.1 — Implement the Feature
+
+Whether implementing directly or via agents, follow the project's existing patterns:
 - Match naming conventions
 - Match code style (indentation, brackets, etc.)
 - Match architecture patterns (where things go, how things are organized)
 - Use existing utilities, helpers, and shared code where available
 - Add imports/registrations as needed
 
-### Step 2.2 — Verify
+### Step 3.2 — Code Analysis
 
-If possible, verify the implementation:
-- **Build check:** Run the project's build command to ensure no compilation errors
-- **Lint check:** Run linter if configured
-- **Quick test:** If tests exist for the area, run them
+**MANDATORY after implementation — review the changes for security and quality issues.**
+
+```
+[Create] Running code analysis on changes...
+```
+
+Launch a **Code Analyst** agent (or do it yourself for small changes):
+
+> Review ONLY the code changes made for this feature. Run `git diff --name-only HEAD` and `git ls-files --others --exclude-standard` to find changed/new files.
+> Check for: SQL injection, XSS, command injection, hardcoded secrets, null refs, race conditions, missing auth, unused variables, missing error handling.
+> Fix ALL critical issues. Fix warnings if straightforward.
+> Write report to `reports/code-analysis.md`.
+
+### Step 3.3 — Build & Test
+
+```
+[Create] Building and testing...
+```
+
+1. **Build check:** Run the project's build command
+2. **Lint check:** Run linter if configured
+3. **Run existing tests:** Make sure nothing is broken
+4. If tests fail, fix the issue and re-run
 
 ---
 
-## PHASE 3: Save Report
+## PHASE 4: E2E Verification
 
-**MANDATORY — always save a report to the unprocessed_reports directory.**
+**MANDATORY — always check if the app is running and offer verification.**
+
+```
+[Create] Checking if app is running for verification...
+```
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null
+```
+
+**If the app is running:**
+
+Ask the user:
+> "The app is running. Would you like me to verify the feature with Playwright?"
+
+Options:
+1. **Verify now** — Run E2E verification with screenshots
+2. **Skip verification** — I'll test manually later
+
+**If "Verify now":**
+- Check for `.claude/project-profile.json`:
+  - If missing: run the full profile builder (ask for frontend URL, login details, test credentials)
+  - If exists: run the **completeness check** — verify ALL fields are populated (frontend URL, auth type, selectors, test user, test password in `.claude/.env`). If ANYTHING is missing, ask the user for it before proceeding.
+- Login using the project profile
+- Navigate to the relevant pages
+- Take AFTER screenshots (compare with BEFORE screenshots from Phase 2 if available)
+- Perform verification steps from the plan's testing section
+- Report pass/fail per step
+
+```
+[Create] Verifying feature with Playwright...
+[Verify] Logging in as {test_user}...
+[Verify] Navigating to {page}...
+[Verify] Screenshot: after state captured
+[Verify] Result: PASSED — {description}
+```
+
+**If app is not running or user skips:** Proceed without verification.
+
+---
+
+## PHASE 5: Generate Report & Present Results
+
+### Step 5.1 — Save Markdown Report (for /changelog)
+
+**MANDATORY — always save to unprocessed_reports.**
 
 ```bash
 mkdir -p .claude/unprocessed_reports
-```
-
-Generate a filename with timestamp and short description:
-```bash
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
-# Derive a short slug from the feature description (lowercase, hyphens, max 40 chars)
 ```
 
-The filename format is: `{TIMESTAMP}_feature_{short-slug}.md`
-
-Example: `2026-03-20_14-30-45_feature_monster-hunting-ai.md`
-
-Write the report:
+Write to `.claude/unprocessed_reports/{TIMESTAMP}_feature_{slug}.md`:
 
 ```markdown
 ---
@@ -298,78 +416,84 @@ status: implemented
 # Feature: {short title}
 
 ## Summary
-{1-2 sentence description of what was implemented}
+{1-2 sentence description}
 
 ## What Was Done
-- {bullet points of changes}
+- {bullet points}
 
 ## Files Created
-- `{path}` — {brief description}
+- `{path}` — {description}
 
 ## Files Modified
 - `{path}` — {what changed}
 
+## Code Analysis
+- Critical issues found: {count} (fixed)
+- Warnings: {count}
+
 ## How to See / Test It
-{Specific instructions for how the user can see or test this feature}
-- {e.g., "Run the game and go to Level 3 — monsters now spawn and pursue the player"}
-- {e.g., "Start the dev server, go to Settings, toggle the dark mode switch"}
-- {e.g., "POST to /api/invoices/export with a list of IDs"}
+{verification steps}
 
 ## Technical Notes
-{Any important implementation details, tradeoffs, or things to be aware of}
+{tradeoffs, decisions}
 ```
 
-### Step 3.1 — E2E Verification (if app is running)
+### Step 5.2 — Generate Master HTML Report
 
-**After implementation, check if the application is running and can be verified:**
+**MANDATORY — generate a polished HTML report for this feature.**
 
+```
+[Create] Generating feature report...
+```
+
+Write `reports/feature-implementation-report.html` — a self-contained HTML document with:
+
+1. **Header** — feature name, date, role, project type, status (IMPLEMENTED badge)
+2. **Design** — Paper mockup screenshots embedded as base64 (from the plan)
+3. **Implementation Summary** — what was built, files created/modified
+4. **Before/After Screenshots** — if BEFORE screenshots were captured in Phase 2, embed both side by side with the AFTER screenshots from verification
+5. **Code Analysis Results** — security findings, quality findings, fixes applied
+6. **Verification Results** — pass/fail per step, screenshots from Playwright
+7. **Testing Checklist** — what to test manually (HTML checkboxes)
+
+Include the clickable screenshot lightbox. Self-contained with all images as base64.
+
+Auto-open the report:
 ```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:4200 2>/dev/null || curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null
+start "" "reports/feature-implementation-report.html" 2>/dev/null || open "reports/feature-implementation-report.html" 2>/dev/null || xdg-open "reports/feature-implementation-report.html" 2>/dev/null
 ```
 
-**If the app is running AND the feature involves UI or user-facing changes:**
-
-Ask the user:
-> "The app is running. Would you like me to verify the feature with Playwright?"
-
-Options:
-1. **Verify now** — Run E2E verification with screenshots
-2. **Skip verification** — I'll test manually later
-
-**If "Verify now":**
-- Check for `.claude/project-profile.json`:
-  - If missing: run the full profile builder (ask for frontend URL, login details, test credentials)
-  - If exists: run the **completeness check** — verify all fields are populated (frontend URL, auth type, selectors, test user, test password in `.claude/.env`). If ANYTHING is missing, ask the user for it before proceeding. Do NOT attempt to run Playwright with incomplete credentials.
-- Use Playwright to: login, navigate to the relevant page, perform the verification steps from the "How to See / Test It" section of the report
-- Take BEFORE and AFTER screenshots
-- Attach screenshots to the report in `.claude/unprocessed_reports/`
-- Report pass/fail
+### Step 5.3 — Present Final Result
 
 ```
-[Create] Verifying feature with Playwright...
-[Verify] Logging in as {test_user}...
-[Verify] Navigating to {page}...
-[Verify] Screenshot: before state captured
-[Verify] Performing verification steps...
-[Verify] Screenshot: after state captured
-[Verify] Result: PASSED — {description}
-```
+## Feature Implemented: {short title}
 
-**If app is not running or user skips:** Proceed to the final result without verification.
-
-### Step 3.2 — Present Result
-
-```
-Feature implemented: {short title}
-
+**Role:** {your_role}
+**Scope:** {UI-only / Backend-only / Full-stack}
 **Files created:** {count}
 **Files modified:** {count}
-**Report saved:** .claude/unprocessed_reports/{filename}
-**Verification:** {PASSED / SKIPPED / NOT AVAILABLE (app not running)}
-{If verified: Screenshots at reports/verification-screenshots/}
+**Code analysis:** {X} critical (fixed), {Y} warnings
+**Verification:** {PASSED / SKIPPED / NOT AVAILABLE}
+
+**Reports:**
+- Plan: `reports/feature-plan.html`
+- Implementation: `reports/feature-implementation-report.html` (opened in browser)
+- Changelog entry: `.claude/unprocessed_reports/{filename}`
 
 **How to test:** {brief instruction}
+
+**Next:** Run `/changelog` to compile all changes, or `/verify` to re-verify later.
 ```
+
+### Step 5.4 — Offer Full Pipeline (optional)
+
+For large features, ask:
+
+> "Would you like to run the full quality pipeline (security audit + quality scan + comprehensive tests)?"
+
+Options:
+1. **Yes** — Run `/dev-team` to do the full iterative quality loop
+2. **No** — I'm satisfied with the implementation
 
 ---
 
