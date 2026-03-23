@@ -124,7 +124,8 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 - **E2E verification** — after implementation, both `/create` and `/bug` auto-offer Playwright verification if the app is running
 - **Project profile** — `/verify` builds `.claude/project-profile.json` on first run (login URL, selectors, test user). Reused for all future verifications.
 - **Self-contained HTML reports** — all screenshots embedded as base64, clickable lightbox for full-size viewing
-- **Changelog pipeline** — `/create` and `/bug` save timestamped reports → `/changelog` compiles them into a polished HTML changelog
+- **Changelog pipeline** — `/create` and `/bug` save timestamped reports → `/changelog` compiles them into a project-themed HTML changelog
+- **Project design profile** — all HTML reports adapt their visual design to match the project. Design settings stored in `.claude/project-profile.json`. Auto-generated per ProjectType: dark neon for games, clean corporate for apps, terminal-style for APIs
 
 ### Repository Onboarding
 - **Single repo mode** — detects stack, installs deps, configures env, sets up DB, runs migrations, builds, tests, starts dev server

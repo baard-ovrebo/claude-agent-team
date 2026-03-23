@@ -1181,9 +1181,18 @@ Database: SQL Server</div>
 
 <div class="skill-card" style="border-left:3px solid #6366f1;">
   <h3><code>/changelog</code> Changelog Generator</h3>
-  <p class="desc">Reads reports from .claude/unprocessed_reports/ and generates a polished HTML changelog. Features (blue cards) and bug fixes (amber/red cards) visually distinct. Moves processed reports to prevent double-counting.</p>
+  <p class="desc">Reads reports from .claude/unprocessed_reports/ and generates a project-themed HTML changelog. Design automatically matches the project type: dark neon patch notes for games, clean corporate for apps, terminal-style for APIs. Saves design to project profile for consistency across all reports.</p>
   <h4>Usage</h4>
   <div class="code-block">/changelog</div>
+  <h4>Project-Aware Design</h4>
+  <ul>
+    <li><strong>GAME:</strong> Dark bg, neon accents, "Patch Notes" style, ADDED/FIXED labels, genre-adaptive (pixel, sci-fi, fantasy)</li>
+    <li><strong>APPLICATION:</strong> Clean white, blue accent, corporate timeline</li>
+    <li><strong>SAAS:</strong> Minimal indigo, product update feel</li>
+    <li><strong>API:</strong> Dark terminal, green/cyan, technical changelog</li>
+    <li><strong>MOBILE:</strong> App-like, rounded, "What's New" style</li>
+    <li>Design detected from: project profile &rarr; project CSS &rarr; auto-generated from ProjectType</li>
+  </ul>
 </div>
 
 <!-- ═══════════════════════════════════════════ -->

@@ -371,8 +371,21 @@ JIRA_API_TOKEN=your-api-token</pre>
 
 <div class="cmd-card" style="border-left-color:var(--indigo);" id="changelog">
 <h3><code>/changelog</code> <span class="badge b-indigo">Universal</span></h3>
-<p class="desc">Reads all reports from <code>.claude/unprocessed_reports/</code> and generates a beautifully designed HTML changelog. Features (blue) and bug fixes (amber/red) are visually distinct. After generating, moves reports to <code>processed_reports/</code>.</p>
+<p class="desc">Reads all reports from <code>.claude/unprocessed_reports/</code> and generates a project-themed HTML changelog. The design automatically matches the project: dark neon for games, clean corporate for apps, terminal-style for APIs. Saves design settings to the project profile for consistency.</p>
 <pre>/changelog</pre>
+<details><summary>Project-Aware Design</summary><div>
+<p>The changelog visual design adapts to the project type:</p>
+<table>
+<thead><tr><th>ProjectType</th><th>Theme</th></tr></thead>
+<tbody>
+<tr><td>GAME</td><td>Dark bg, neon accents, glow effects, &ldquo;Patch Notes&rdquo; style, ADDED/FIXED/PATCHED labels. Adapts to genre (pixel, dark fantasy, sci-fi)</td></tr>
+<tr><td>APPLICATION</td><td>Clean white, blue accent, corporate timeline, FEATURE/BUG FIX labels</td></tr>
+<tr><td>SAAS</td><td>Minimal indigo, product update feel, feature highlights</td></tr>
+<tr><td>API</td><td>Dark terminal, green/cyan, technical changelog with code blocks</td></tr>
+<tr><td>MOBILE</td><td>App-like, rounded corners, vibrant, &ldquo;What&rsquo;s New&rdquo; style</td></tr>
+</tbody></table>
+<p>Design is detected from: 1) <code>.claude/project-profile.json</code> design section, 2) project CSS/theme files, 3) auto-generated from ProjectType. Saved to profile for all future reports.</p>
+</div></details>
 <p><strong>Output:</strong> <code>reports/changelog.html</code></p>
 <p><strong>Reads from:</strong></p><div class="uses"><a href="#create">/create</a> <a href="#bug">/bug</a> <span style="font-size:11px;color:var(--light);">report files</span></div>
 </div>
