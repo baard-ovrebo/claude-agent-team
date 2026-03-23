@@ -98,6 +98,7 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | `/impact-scan "description"` | Scan all org repos to find where a change needs to be implemented — per-repo file-level analysis |
 | `/impact-scan "desc" --org {url}` | Same, targeting a specific GitHub org |
 | `/impact-scan "desc" --local-scan {path}` | Same, scanning repos already on disk |
+| `/impact-scan --apply report.html` | Apply a scan report: clone repos, create local branches, implement all changes, build, start services. **Local only — never pushes.** |
 
 ### Docker Pipeline
 | Command | Description |

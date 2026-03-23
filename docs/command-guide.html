@@ -678,7 +678,9 @@ JIRA_API_TOKEN=your-api-token</pre>
 <pre>/impact-scan "Add product price to payload response for REST public api"
 /impact-scan "Add price field" --org https://github.com/nexum-fo
 /impact-scan "Add price field" --local-scan D:\Projects
-/impact-scan "Add price" --repos backend-api,frontend,shared-types</pre>
+/impact-scan "Add price" --repos backend-api,frontend,shared-types
+/impact-scan --apply reports/impact-scan-salesorder-unit.html
+/impact-scan --apply report.html --target D:\Dev\feature-work</pre>
 <details><summary>How It Works</summary><div>
 <ol>
 <li><strong>Resolve repos</strong> &mdash; fetch from GitHub org, scan local disk, or use specified repos</li>
@@ -700,8 +702,23 @@ JIRA_API_TOKEN=your-api-token</pre>
 <li>Suggested PR strategy</li>
 </ul>
 </div></details>
+<details><summary>Apply Mode (--apply)</summary><div>
+<p>After scanning, use <code>--apply</code> to implement ALL changes from a report locally:</p>
+<ol>
+<li>Reads the scan report HTML to extract repos, files, changes</li>
+<li>Clones/pulls all affected repos</li>
+<li>Creates identical feature branches in each repo (LOCAL ONLY)</li>
+<li>Installs dependencies</li>
+<li>Implements changes in dependency order (spawns agents per repo)</li>
+<li>Builds all repos, runs tests</li>
+<li>Starts all services locally</li>
+<li>Generates delivery report with testing instructions</li>
+</ol>
+<p><strong>Safety: NEVER pushes to remote.</strong> All changes stay on local branches. Includes rollback instructions.</p>
+</div></details>
 <details><summary>Next Steps After Scanning</summary><div>
 <ul>
+<li><strong>Apply locally</strong> &mdash; <code>--apply report.html</code> implements everything on local branches</li>
 <li><strong>Start implementing</strong> &mdash; uses /create for each repo in dependency order</li>
 <li><strong>Create Jira tickets</strong> &mdash; one ticket per affected repo with change details + blocked-by links</li>
 <li><strong>Just the report</strong> &mdash; for planning purposes only</li>

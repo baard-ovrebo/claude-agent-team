@@ -16,12 +16,356 @@ You are a **Senior Software Architect** specializing in multi-repository systems
 | `"description" --org {url}` | **Scan GitHub org** — fetch all repos from org | `/impact-scan "Add price field" --org https://github.com/nexum-fo` |
 | `"description" --local-scan {path}` | **Scan local repos** — find repos on disk | `/impact-scan "Add price field" --local-scan D:\Projects` |
 | `"description" --repos repo1,repo2` | **Scan specific repos** — only check listed repos | `/impact-scan "Add price" --repos control-backend-api,control-frontend` |
+| `--apply {report_path}` | **Apply Mode** — read a previous scan report and implement ALL changes locally | `/impact-scan --apply reports/impact-scan-salesorder-unit.html` |
+| `--apply {report_path} --target {path}` | **Apply to target** — clone repos into a specific directory | `/impact-scan --apply report.html --target D:\Dev\feature-work` |
+
+**Route:** If `--apply` is present → Go to **APPLY MODE** (below). Otherwise → continue to PHASE 1 (scan mode).
 
 Extract:
 - `{DESCRIPTION}` — the change request / feature description
 - `--org {url}` — GitHub org URL (triggers org scan via GitHub API)
 - `--local-scan {path}` — path to scan for local repos
 - `--repos {list}` — comma-separated list of repo names or paths
+- `--apply {report_path}` — path to a previously generated impact scan HTML report
+- `--target {path}` — directory to clone repos into (default: current directory)
+
+---
+
+## APPLY MODE — Implement Impact Scan Results Locally
+
+**Entered via `/impact-scan --apply {report_path}`**
+
+**CRITICAL SAFETY RULE: ALL changes are LOCAL ONLY. NEVER push to remote. NEVER run `git push`. All work stays on the developer's machine.**
+
+### Apply Step 0 — Parse the Report
+
+```
+[Impact Scan] Reading impact scan report...
+```
+
+Read the HTML report file and extract:
+- The original change request description
+- List of affected repositories (name, URL/path)
+- For each repo: files to change, what to change, priority, implementation order
+- Dependency chain
+
+```bash
+python -c "
+from html.parser import HTMLParser
+import sys
+
+class ReportParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_tag = None
+        self.data = []
+        self.repos = []
+
+    def handle_data(self, data):
+        self.data.append(data.strip())
+
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# Extract repo names, URLs, file lists from the HTML structure
+# The exact parsing depends on the report format
+print('Report loaded:', len(content), 'chars')
+" "{report_path}"
+```
+
+In practice, read the HTML file with the Read tool and extract the structured data from the report sections: repo names, clone URLs, affected files, change descriptions, implementation order.
+
+Present the extracted plan:
+
+```
+[Impact Scan] Apply mode — implementing changes from report.
+
+**Change Request:** {original description}
+**Repos affected:** {count}
+**Implementation order:**
+1. {repo_name} — {X} files to change
+2. {repo_name} — {X} files to change
+3. {repo_name} — {X} files to change
+
+**SAFETY: All changes are LOCAL ONLY. Nothing will be pushed to remote.**
+```
+
+Ask the user to confirm:
+
+> "Ready to set up the local development environment and implement all changes?
+>
+> This will:
+> 1. Clone/pull all {count} affected repos locally
+> 2. Create feature branches in each repo (local only)
+> 3. Install dependencies for each repo
+> 4. Implement the changes described in the report
+> 5. Build and start all services locally
+> 6. Generate a delivery report
+>
+> **Nothing will be pushed to remote repositories.**
+>
+> Proceed?"
+
+Options:
+1. **Full apply** — Clone, setup, implement, build, start everything
+2. **Setup only** — Clone and setup repos, but don't implement yet (I want to review first)
+3. **Implement only** — Repos are already cloned, just implement the changes
+4. **Cancel**
+
+### Apply Step 1 — Set Up Local Environment
+
+```
+[Impact Scan] Setting up local development environment...
+```
+
+**For each affected repo (in dependency order):**
+
+**Step A — Clone or locate the repo:**
+
+```bash
+TARGET_DIR="{target_path or current directory}"
+mkdir -p "$TARGET_DIR"
+```
+
+Check if the repo is already cloned locally:
+```bash
+# Check common locations
+for dir in "$TARGET_DIR/{repo_name}" "./{repo_name}" "../{repo_name}"; do
+  if [ -d "$dir/.git" ]; then
+    echo "FOUND:$dir"
+    break
+  fi
+done
+```
+
+If not found, clone it:
+```bash
+cd "$TARGET_DIR" && git clone "{clone_url}" 2>&1
+```
+
+If clone requires different GitHub account, use the same account switching logic from `/repo-setup`.
+
+**Step B — Create a local feature branch:**
+
+```bash
+cd "$TARGET_DIR/{repo_name}" && \
+  git fetch origin && \
+  git checkout -b "feature/{change_slug}" 2>&1
+```
+
+**IMPORTANT: Use the SAME branch name across ALL repos** so it's clear these changes belong together. Derive the branch name from the change request description:
+- `feature/add-product-price-to-response`
+- `feature/salesorder-unit-integration`
+
+```
+[Impact Scan] [{current}/{total}] {repo_name}: branch feature/{slug} created
+```
+
+**Step C — Detect stack and install dependencies:**
+
+```bash
+cd "$TARGET_DIR/{repo_name}" && ls package.json pom.xml build.gradle *.csproj requirements.txt go.mod 2>/dev/null
+```
+
+Install dependencies:
+```bash
+# Node.js
+cd "$TARGET_DIR/{repo_name}" && npm install 2>&1
+
+# Java (Maven)
+cd "$TARGET_DIR/{repo_name}" && ./mvnw dependency:resolve 2>&1
+
+# .NET
+cd "$TARGET_DIR/{repo_name}" && dotnet restore 2>&1
+
+# Python
+cd "$TARGET_DIR/{repo_name}" && pip install -r requirements.txt 2>&1
+```
+
+```
+[Impact Scan] [{current}/{total}] {repo_name}: dependencies installed
+```
+
+### Apply Step 2 — Implement Changes
+
+```
+[Impact Scan] Implementing changes across {count} repositories...
+```
+
+**Process repos in the dependency order from the report.**
+
+For each repo, launch a **backend-developer agent**:
+
+> You are a **Senior {language} Developer**. Implement the following changes in {repo_name}.
+>
+> **CRITICAL: Do NOT run `git push`. All changes are LOCAL ONLY.**
+>
+> ## Change Request
+> {original description from the report}
+>
+> ## Changes Required in This Repo
+> {paste the per-repo detail from the report: files to change, what to change, code snippets}
+>
+> ## Working Directory
+> {TARGET_DIR}/{repo_name}
+>
+> ## Instructions
+> 1. Read at least 3-5 existing files to understand patterns before writing
+> 2. Your code MUST match the existing code style, naming, architecture
+> 3. Implement EXACTLY what the report specifies — no more, no less
+> 4. Run the build command after changes to verify compilation
+> 5. Run existing tests to check for regressions
+> 6. Do NOT commit or push — leave changes uncommitted for review
+>
+> ## STATUS REPORTING
+> Print `[{repo_name}] {what you are doing}` before each step.
+>
+> Write your implementation summary to `{TARGET_DIR}/reports/apply-{repo_name}.md`
+
+**For efficiency:** If repos are independent (no dependency between them), launch agents in parallel. If repo B depends on changes in repo A, wait for A to complete first.
+
+After each repo:
+```
+[Impact Scan] [{current}/{total}] {repo_name}: changes implemented
+  Files modified: {count}
+  Files created: {count}
+  Build: {passed/failed}
+  Tests: {passed/failed/skipped}
+```
+
+### Apply Step 3 — Build Everything
+
+```
+[Impact Scan] Building all affected repos...
+```
+
+Build each repo in dependency order:
+```bash
+cd "$TARGET_DIR/{repo_name}" && {build_command} 2>&1
+```
+
+If a build fails:
+- Read the error
+- Attempt to fix (may be a missing import, wrong type from the shared lib change, etc.)
+- Rebuild
+- If still failing after 3 attempts, report the error and continue to next repo
+
+### Apply Step 4 — Start All Services Locally
+
+```
+[Impact Scan] Starting services locally...
+```
+
+**Start services in dependency order** (databases/infra first, then backends, then frontends):
+
+For each service repo that has a runnable server:
+```bash
+cd "$TARGET_DIR/{repo_name}" && {start_command} &
+```
+
+Wait for each to be healthy:
+```bash
+sleep 3
+curl -s -o /dev/null -w "%{http_code}" http://localhost:{port} 2>/dev/null
+```
+
+Present the running services:
+```
+[Impact Scan] Services running:
+  {repo_name}: http://localhost:{port} — {status}
+  {repo_name}: http://localhost:{port} — {status}
+  {repo_name}: http://localhost:{port} — {status}
+```
+
+**If starting services requires Docker** (e.g., databases):
+```bash
+cd "$TARGET_DIR/{repo_name}" && docker compose up -d {db_service} 2>&1
+```
+
+### Apply Step 5 — Verify
+
+```
+[Impact Scan] Verifying changes...
+```
+
+If Playwright is available and a project profile exists:
+- Login to the application
+- Navigate to the affected areas
+- Take screenshots showing the implemented changes
+- Run basic verification steps based on the report's change descriptions
+
+Save screenshots to `{TARGET_DIR}/reports/apply-screenshots/`
+
+### Apply Step 6 — Generate Delivery Report
+
+```
+[Impact Scan] Generating implementation report...
+```
+
+Generate `{TARGET_DIR}/reports/impact-apply-report.html` — a comprehensive HTML report.
+
+**The report MUST include:**
+
+1. **Header** — "Impact Implementation Report", change request description, date, status
+2. **Safety Notice** — prominent banner: "All changes are LOCAL ONLY. Nothing has been pushed to remote."
+3. **Repositories Set Up** — table: repo name, path, branch, dependencies status
+4. **Implementation Summary** — for each repo:
+   - Files created/modified
+   - What was changed and why
+   - Build status
+   - Test status
+   - Code snippets of key changes
+5. **Services Running** — table: service name, URL, port, health status
+6. **Verification Screenshots** — embedded as base64 with lightbox (if captured)
+7. **Testing Instructions** — step-by-step QA test cases (same quality as `/report`):
+   - Preconditions
+   - Exact steps to test
+   - Expected results
+   - Checkboxes for testers
+8. **What to Do Next** — instructions for the developer:
+   - How to review the changes (`git diff` in each repo)
+   - How to commit when satisfied
+   - How to create PRs (one per repo)
+   - How to stop the running services
+   - **Reminder: push only when ready, nothing has been pushed yet**
+9. **Rollback Instructions** — how to undo everything:
+   ```
+   cd {repo} && git checkout main && git branch -D feature/{slug}
+   ```
+
+**Styling:** Use project design profile. Clickable lightbox. Self-contained. Print-friendly.
+
+Auto-open:
+```bash
+start "" "{TARGET_DIR}/reports/impact-apply-report.html" 2>/dev/null || open "{TARGET_DIR}/reports/impact-apply-report.html" 2>/dev/null || xdg-open "{TARGET_DIR}/reports/impact-apply-report.html" 2>/dev/null
+```
+
+### Apply Step 7 — Present Results
+
+```
+## Impact Implementation Complete
+
+**Change Request:** {description}
+**Status:** All changes implemented LOCALLY
+**Repos set up:** {count}
+**Feature branch:** feature/{slug} (same branch name in all repos)
+
+| Repo | Files Changed | Build | Tests | Service |
+|------|--------------|-------|-------|---------|
+| {name} | {count} | PASS | PASS | http://localhost:{port} |
+| {name} | {count} | PASS | PASS | http://localhost:{port} |
+| {name} | {count} | PASS | N/A | — |
+
+**NOTHING HAS BEEN PUSHED. All changes are on local branches only.**
+
+**Report:** {TARGET_DIR}/reports/impact-apply-report.html (opened in browser)
+
+**Next steps:**
+1. Review changes: `cd {repo} && git diff`
+2. Test the running services at the URLs above
+3. When satisfied, commit and create PRs
+4. To undo: `cd {repo} && git checkout main && git branch -D feature/{slug}`
+```
 
 ---
 
