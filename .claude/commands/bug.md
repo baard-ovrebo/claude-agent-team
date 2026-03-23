@@ -270,6 +270,10 @@ Bug fixed: {short title}
 **When spawning sub-agents**, include this instruction in their prompt:
 > "Before writing any code, read at least 3-5 existing files in the area you are working on. Identify: naming conventions, code style, architecture patterns, existing utilities you can reuse, and how similar features are implemented. Your code MUST look like it was written by the same developer who wrote the existing code."
 
+
+### MANDATORY — USE PROJECT DESIGN PROFILE FOR HTML REPORTS
+When generating ANY HTML report, check for a `design` section in `.claude/project-profile.json`. If it exists, use those colors, fonts, and styling for the report. The report should look like it belongs to the project. If no design profile exists, use sensible defaults based on the ProjectType (dark theme for games, clean light for applications, etc.).
+
 ### MANDATORY STATUS REPORTING
 **Print a status line before EVERY major step.** Format:
 ```

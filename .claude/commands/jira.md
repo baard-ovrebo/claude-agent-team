@@ -1788,6 +1788,10 @@ Every ticket MUST go through ALL applicable phases in order. You are NOT allowed
 If you catch yourself thinking "this is too simple to need a design/report/screenshot" — STOP. You are wrong. Follow the phases.
 
 
+
+### MANDATORY — USE PROJECT DESIGN PROFILE FOR HTML REPORTS
+When generating ANY HTML report, check for a `design` section in `.claude/project-profile.json`. If it exists, use those colors, fonts, and styling for the report. The report should look like it belongs to the project. If no design profile exists, use sensible defaults based on the ProjectType (dark theme for games, clean light for applications, etc.).
+
 ### MANDATORY — CLICKABLE SCREENSHOTS IN HTML REPORTS
 Any HTML report that contains screenshots MUST include a JavaScript lightbox so users can click any screenshot to view it full-size. Include this in every generated HTML report that has images:
 - Every screenshot `<img>` must have `cursor: pointer` and an `onclick` handler
