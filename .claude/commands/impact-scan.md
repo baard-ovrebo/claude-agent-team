@@ -18,16 +18,119 @@ You are a **Senior Software Architect** specializing in multi-repository systems
 | `"description" --repos repo1,repo2` | **Scan specific repos** — only check listed repos | `/impact-scan "Add price" --repos control-backend-api,control-frontend` |
 | `--apply {report_path}` | **Apply Mode** — read a previous scan report and implement ALL changes locally | `/impact-scan --apply reports/impact-scan-salesorder-unit.html` |
 | `--apply {report_path} --target {path}` | **Apply to target** — clone repos into a specific directory | `/impact-scan --apply report.html --target D:\Dev\feature-work` |
+| `--convert-json {html_path}` | **Convert Mode** — parse an existing HTML report and generate the structured JSON file | `/impact-scan --convert-json reports/impact-scan-customer-status.html` |
 
-**Route:** If `--apply` is present → Go to **APPLY MODE** (below). Otherwise → continue to PHASE 1 (scan mode).
+**Route:**
+- If `--convert-json` is present → Go to **CONVERT JSON MODE** (below)
+- If `--apply` is present → Go to **APPLY MODE** (below)
+- Otherwise → continue to PHASE 1 (scan mode)
 
 Extract:
 - `{DESCRIPTION}` — the change request / feature description
 - `--org {url}` — GitHub org URL (triggers org scan via GitHub API)
 - `--local-scan {path}` — path to scan for local repos
 - `--repos {list}` — comma-separated list of repo names or paths
+- `--convert-json {html_path}` — path to an existing HTML impact scan report to convert to JSON
 - `--apply {report_path}` — path to a previously generated impact scan HTML report
 - `--target {path}` — directory to clone repos into (default: current directory)
+
+---
+
+## CONVERT JSON MODE — Generate JSON from an Existing HTML Report
+
+**Entered via `/impact-scan --convert-json reports/impact-scan-customer-status.html`**
+
+This mode reads an existing HTML impact scan report, extracts all the structured data from it, and writes a JSON file using the standard schema.
+
+### Convert Step 1 — Read the HTML Report
+
+```
+[Impact Scan] Reading HTML report for JSON conversion...
+```
+
+```bash
+ls "{html_path}" && echo "FILE_EXISTS" || echo "NOT_FOUND"
+```
+
+If not found, inform the user and stop.
+
+Read the full HTML file using the Read tool. The report contains structured sections with headings, tables, and code blocks that map directly to the JSON schema fields.
+
+### Convert Step 2 — Extract Data from HTML
+
+Parse the HTML content and extract each field for the JSON schema:
+
+1. **title** — from the report header / h1
+2. **changeRequest** — from the "Change Request" or description section
+3. **date** — from the report date
+4. **reposScanned / reposAffected** — from the executive summary stats
+5. **complexity** — from the complexity badge/label
+6. **executiveSummary** — from the executive summary paragraph
+7. **architectureFlow** — from the architecture diagram section (parse the boxes/nodes)
+8. **implementationOrder** — from the "Implementation Order" numbered list
+9. **affectedRepos** — from each per-repo detail section:
+   - Parse the repo name, impact level, language, path
+   - For each file in the change table: number, title, file path, location, changeType, priority, complexity, description
+   - Extract currentCode and newCode from code blocks if present
+10. **unaffectedRepos** — from the "Repos NOT Affected" section
+11. **riskAssessment** — from the "Risk Assessment" section
+12. **suggestedApproach** — from the "Suggested Approach" section
+
+**Use the Read tool to read the HTML**, then extract the data by understanding the document structure. The HTML has clear section headings and tables that map to JSON fields.
+
+### Convert Step 3 — Write the JSON File
+
+Derive the JSON filename from the HTML filename:
+```bash
+JSON_PATH="${html_path%.html}.json"
+```
+
+Write the JSON using Python:
+```bash
+python -c "
+import json
+
+data = {
+    'title': '{extracted_title}',
+    'changeRequest': '{extracted_description}',
+    'date': '{extracted_date}',
+    'reposScanned': {count},
+    'reposAffected': {count},
+    'complexity': '{extracted}',
+    'executiveSummary': '{extracted}',
+    'architectureFlow': [...],
+    'implementationOrder': [...],
+    'affectedRepos': [...],
+    'unaffectedRepos': [...],
+    'riskAssessment': {...},
+    'suggestedApproach': {...}
+}
+
+with open('$JSON_PATH', 'w', encoding='utf-8') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+
+print(f'JSON saved: $JSON_PATH')
+print(f'Repos: {data[\"reposAffected\"]} affected, {len(data[\"affectedRepos\"][0][\"changes\"])} changes in first repo')
+"
+```
+
+### Convert Step 4 — Present Result
+
+```
+[Impact Scan] JSON conversion complete.
+
+**Source:** {html_path}
+**Output:** {json_path}
+**Repos affected:** {count}
+**Total changes:** {count across all repos}
+
+The JSON file can now be used with:
+- `/impact-scan --apply {json_path}` — to implement the changes
+- External tools and CI pipelines
+- Any command that reads impact scan data
+```
+
+**Stop here — conversion mode does not scan or implement anything.**
 
 ---
 
