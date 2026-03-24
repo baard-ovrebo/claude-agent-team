@@ -639,23 +639,96 @@ Present the analysis:
 {JAM analysis results if found}
 ```
 
-### Review Step 3 — Load Previous Context
+### Review Step 3 — Load Previous Context & Switch to Correct Branch
 
-Check if there's a saved state file or previous report for this ticket:
-```bash
-ls reports/jira-state-{KEY}.json reports/jira-{KEY}-report.html 2>/dev/null
+**MANDATORY — must load context AND be on the correct branch before making ANY changes.**
+
+```
+[Jira Review] Loading previous context and checking branches...
 ```
 
-If a state file exists, load it to get: project paths, branch names, stack profile. This avoids re-asking the user.
+**Step A — Load saved state or ask for project paths:**
 
-If no state file, ask for project paths (same as Step 1.6 in the main pipeline).
-
-Also check which branch the repos are on:
+Check if there's a saved state file:
 ```bash
-cd "{project_path}" && git branch --show-current
+cat reports/jira-state-{KEY}.json 2>/dev/null
 ```
 
-If already on a feature branch for this ticket, stay on it. If on main/develop, ask if a branch should be created.
+If a state file exists, load: project paths, branch names, stack profile. This avoids re-asking the user.
+
+If no state file, ask for project paths (same as Step 1.6 in the main pipeline):
+> "Which project(s) should I work with for this review feedback?"
+
+**Step B — For EACH project path, check and switch to the correct branch:**
+
+```bash
+cd "{project_path}" && echo "Current: $(git branch --show-current)"
+```
+
+**Try to find the ticket's feature branch** (in this priority order):
+
+```bash
+cd "{project_path}" && git branch --list "*{KEY}*" --list "*{key_lower}*" 2>/dev/null
+```
+
+Also check for common patterns:
+```bash
+cd "{project_path}" && git branch --list "feature/{KEY}*" --list "hotfix/{KEY}*" --list "bugfix/{KEY}*" 2>/dev/null
+```
+
+**Decision logic:**
+
+1. **If a branch matching the ticket key exists** (e.g., `feature/FO-2847-fix-invoice`):
+   - Switch to it automatically:
+   ```bash
+   cd "{project_path}" && git checkout "{branch_name}" 2>&1
+   ```
+   - Pull latest:
+   ```bash
+   cd "{project_path}" && git pull 2>&1
+   ```
+   - Report: `[Jira Review] Switched to branch {branch_name} in {repo_name}`
+
+2. **If saved state has a branch name** (from previous `/jira` run):
+   - Check if that branch still exists:
+   ```bash
+   cd "{project_path}" && git branch --list "{saved_branch}" 2>/dev/null
+   ```
+   - If exists: switch to it
+   - If not: inform the user and ask
+
+3. **If on main/develop (no feature branch found):**
+   - Ask the user:
+   > "No feature branch found for {KEY} in {repo_name} (currently on `{current_branch}`).
+   >
+   > What should I do?"
+
+   Options:
+   1. **Create a new branch** — I'll name it (e.g., `feature/{KEY}-review-fixes`)
+   2. **Work on current branch** — Make changes on `{current_branch}` directly
+   3. **I'll specify the branch** — Let me type the branch name
+
+4. **If there are uncommitted changes on the current branch:**
+   ```bash
+   cd "{project_path}" && git status --porcelain | wc -l
+   ```
+   If uncommitted changes exist:
+   > "There are {count} uncommitted changes in {repo_name}. What should I do?"
+
+   Options:
+   1. **Stash them** — Stash changes, switch branch, I'll pop them later
+   2. **Keep and switch** — Switch branch (changes come with me)
+   3. **Abort** — Don't switch, I'll handle git myself
+
+**After switching in ALL projects, confirm:**
+
+```
+[Jira Review] Branch status:
+  {repo_1}: {branch_name} ✓
+  {repo_2}: {branch_name} ✓
+```
+
+**DO NOT proceed to Step 4 until all repos are on the correct branch.**
 
 ### Review Step 4 — Plan the Fixes
 
