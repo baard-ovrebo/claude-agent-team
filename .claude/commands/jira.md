@@ -14,6 +14,7 @@ You are the **Jira Ticket Orchestrator** — a senior technical lead who takes a
 - If `$ARGUMENTS` is `sprint` → Go to **SPRINT MODE** (below)
 - If `$ARGUMENTS` starts with `watch` (e.g., `watch FO-2847`) → Go to **WATCH MODE** (below)
 - If `$ARGUMENTS` starts with `resume` (e.g., `resume FO-2847`) → Go to **RESUME MODE** (below)
+- If `$ARGUMENTS` is a ticket key followed by a quoted message (e.g., `FO-2847 "Review feedback to address"`) → Go to **REVIEW FEEDBACK MODE** (below)
 - If `$ARGUMENTS` is a ticket key like `FO-2847` → Go to **PHASE 1** (single ticket mode)
 
 ---
@@ -514,6 +515,300 @@ STATEEOF
 ```
 
 This state file contains everything needed to resume the pipeline in a new session without re-asking the user for project paths, branch names, or plan approval.
+
+---
+
+## REVIEW FEEDBACK MODE — Address Review Comments on a Ticket
+
+**Entered via `/jira FO-2847 "Review feedback message"` — for tickets that came back from review with issues to address.**
+
+This mode is for the common workflow: you implemented a ticket, moved it to "In Review", and the reviewer left comments with issues, change requests, or things you missed. Instead of re-running the full pipeline from scratch, this mode picks up where you left off — focusing specifically on the review feedback.
+
+### Review Step 1 — Fetch Ticket & Latest Comments
+
+```
+[Jira Review] Fetching ticket {KEY} and latest comments...
+```
+
+Fetch the full ticket:
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}?expand=renderedFields" | python -m json.tool > /tmp/jira-ticket-review.json
+```
+
+Extract ALL comments, focusing on the most recent ones (these are the review feedback):
+```bash
+python -c "
+import json
+with open('/tmp/jira-ticket-review.json') as f:
+    data = json.load(f)
+
+comments = data.get('fields', {}).get('comment', {}).get('comments', [])
+
+def extract_text(node):
+    t = ''
+    if isinstance(node, dict):
+        if node.get('type') == 'text':
+            t += node.get('text', '')
+        elif node.get('type') == 'hardBreak':
+            t += '\n'
+        for c in node.get('content', []):
+            t += extract_text(c)
+        if node.get('type') in ('paragraph', 'heading', 'listItem'):
+            t += '\n'
+    return t
+
+print(f'Total comments: {len(comments)}')
+print('---')
+for c in comments:
+    author = c.get('author', {}).get('displayName', 'Unknown')
+    created = c.get('created', '')[:16]
+    body = extract_text(c.get('body', {})).strip()
+    print(f'[{created}] {author}:')
+    print(body[:500])
+    print('---')
+"
+```
+
+Also check for any JAM links in the latest comments:
+```bash
+python -c "
+import json, re
+with open('/tmp/jira-ticket-review.json') as f:
+    data = json.load(f)
+
+def extract_text(node):
+    t = ''
+    if isinstance(node, dict):
+        if node.get('type') == 'text':
+            t += node.get('text', '')
+        for m in node.get('marks', []):
+            if m.get('type') == 'link':
+                href = m.get('attrs', {}).get('href', '')
+                if 'jam.dev' in href:
+                    t += ' ' + href
+        for c in node.get('content', []):
+            t += extract_text(c)
+    return t
+
+comments = data.get('fields', {}).get('comment', {}).get('comments', [])
+for c in comments[-5:]:  # Check last 5 comments
+    text = extract_text(c.get('body', {}))
+    urls = re.findall(r'https?://jam\.dev/c/[\w-]+', text)
+    for u in urls:
+        print('JAM:' + u)
+"
+```
+
+If JAM links found in review comments, analyze them via MCP (same as Step 1.3b in the main pipeline).
+
+### Review Step 2 — Analyze Review Feedback
+
+```
+[Jira Review] Analyzing review feedback...
+```
+
+Combine the user's message (from the command arguments) with the latest Jira comments to build a complete picture of what needs to change.
+
+**Parse the feedback into actionable items:**
+
+For each piece of feedback, classify:
+- **Bug found** — something doesn't work as expected
+- **Missing requirement** — something was forgotten or not implemented
+- **Design change** — the reviewer wants it to look/work differently
+- **Code quality** — naming, structure, pattern issues
+- **Test gap** — missing test coverage
+
+Present the analysis:
+
+```
+## Review Feedback for {KEY}
+
+**User note:** {the quoted message from the command}
+
+**Latest Jira comments ({count} new since last update):**
+
+### Feedback Items:
+| # | Type | From | Description | Priority |
+|---|------|------|-------------|----------|
+| 1 | Missing requirement | {reviewer} | {description} | Must fix |
+| 2 | Bug found | {reviewer} | {description} | Must fix |
+| 3 | Design change | {reviewer} | {description} | Should fix |
+| 4 | Code quality | {reviewer} | {description} | Consider |
+
+### JAM Recordings: {count if any}
+{JAM analysis results if found}
+```
+
+### Review Step 3 — Load Previous Context
+
+Check if there's a saved state file or previous report for this ticket:
+```bash
+ls reports/jira-state-{KEY}.json reports/jira-{KEY}-report.html 2>/dev/null
+```
+
+If a state file exists, load it to get: project paths, branch names, stack profile. This avoids re-asking the user.
+
+If no state file, ask for project paths (same as Step 1.6 in the main pipeline).
+
+Also check which branch the repos are on:
+```bash
+cd "{project_path}" && git branch --show-current
+```
+
+If already on a feature branch for this ticket, stay on it. If on main/develop, ask if a branch should be created.
+
+### Review Step 4 — Plan the Fixes
+
+```
+[Jira Review] Planning fixes for {count} feedback items...
+```
+
+For each feedback item, determine:
+1. Which files need to change
+2. What the change is
+3. Whether it's in the same repo(s) as before
+
+Present the plan:
+
+> "Here's my plan to address the review feedback:
+>
+> | # | Feedback | Fix | Files |
+> |---|---------|-----|-------|
+> | 1 | {feedback} | {what to do} | {files} |
+> | 2 | {feedback} | {what to do} | {files} |
+>
+> Proceed?"
+
+Options:
+1. **Fix all** — Address every feedback item
+2. **Select items** — I'll pick which to fix (type numbers)
+3. **I'll clarify** — Some items need more context (type details)
+
+### Review Step 5 — Implement Fixes
+
+```
+[Jira Review] Implementing fixes...
+```
+
+For each selected feedback item, implement the fix:
+- Read the relevant files (mandatory codebase understanding)
+- Make the minimum changes needed
+- Match existing code patterns
+
+If multiple repos are affected, process in dependency order.
+
+After implementation:
+- Run build check
+- Run related tests
+- Run code analysis on the diff
+
+### Review Step 6 — Verify (if app running)
+
+Same as the main pipeline's verification step:
+- Check if app is running
+- Offer Playwright verification
+- Take screenshots showing the fixes
+- Check project profile completeness
+
+### Review Step 7 — Generate Review Fix Report
+
+```
+[Jira Review] Generating review fix report...
+```
+
+Generate `reports/jira-{KEY}-review-fix-report.html` — an HTML report specifically for review fixes.
+
+**The report MUST include:**
+1. **Header** — ticket key, "Review Feedback Resolution", date
+2. **Original review feedback** — each item listed with who raised it
+3. **Fixes applied** — for each feedback item: what was changed, which files, code snippets
+4. **Before/After** — if screenshots were taken
+5. **Testing instructions** — how the reviewer can verify each fix
+6. **Files changed** — complete list with diffs
+
+Auto-open:
+```bash
+start "" "reports/jira-{KEY}-review-fix-report.html" 2>/dev/null || open "reports/jira-{KEY}-review-fix-report.html" 2>/dev/null || xdg-open "reports/jira-{KEY}-review-fix-report.html" 2>/dev/null
+```
+
+### Review Step 8 — Update Jira
+
+Ask the user:
+
+> "Review feedback addressed. Would you like to update the Jira ticket?"
+
+Options:
+1. **Post comment + upload report** — Post a comment listing what was fixed, attach the report
+2. **Post comment only** — Just the comment, no attachment
+3. **I'll handle Jira** — Don't touch the ticket
+4. **Move back to Review** — Post comment and transition back to "In Review"
+
+**If posting a comment:**
+
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  -X POST -H "Content-Type: application/json" \
+  "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}/comment" \
+  -d '{
+    "body": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Review feedback addressed:",
+              "marks": [{"type": "strong"}]
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [{"type": "paragraph", "content": [{"type": "text", "text": "{feedback_1} — Fixed: {description}"}]}]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Detailed report attached. Ready for re-review."
+            }
+          ]
+        }
+      ]
+    }
+  }'
+```
+
+Upload report:
+```bash
+source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  -X POST -H "X-Atlassian-Token: no-check" \
+  -F "file=@reports/jira-{KEY}-review-fix-report.html" \
+  "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}/attachments"
+```
+
+### Review Step 9 — Summary
+
+```
+## Review Feedback Resolved: {KEY}
+
+**Feedback items addressed:** {count}/{total}
+**Files modified:** {count}
+**Report:** reports/jira-{KEY}-review-fix-report.html
+**Jira:** {comment posted / report attached / not updated}
+
+**What was fixed:**
+- {item 1}: {brief description of fix}
+- {item 2}: {brief description of fix}
+```
 
 ---
 

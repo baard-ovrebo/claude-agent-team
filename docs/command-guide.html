@@ -207,7 +207,8 @@ JIRA_API_TOKEN=your-api-token</pre>
 <div class="cmd-card" style="border-left-color:var(--amber);" id="jira">
 <h3><code>/jira {KEY}</code> <span class="badge b-amber">Project Management</span></h3>
 <p class="desc">Full Jira ticket-to-resolution pipeline. Takes a ticket from assignment to completed implementation with design review, code analysis, and Jira updates.</p>
-<pre>/jira FO-2847</pre>
+<pre>/jira FO-2847
+/jira FO-2847 "Reviewer says the date format is wrong and missing validation"</pre>
 <details><summary>What It Does (5 Phases)</summary><div>
 <ol>
 <li><strong>Fetch &amp; Analyze</strong> &mdash; fetches ticket via REST API, downloads/resizes image attachments, auto-detects JAM links and analyzes them via MCP, reads all comments for additional requirements and unanswered questions, classifies scope (UI/Backend/Full-stack)</li>
@@ -241,7 +242,21 @@ JIRA_API_TOKEN=your-api-token</pre>
 <p><strong>In sprint mode:</strong> asks whether to watch this ticket or move to the next one (since watching blocks the batch).</p>
 <p><strong>Interrupt:</strong> Ctrl+C saves state. Resume later with <code>/jira resume {KEY}</code>.</p>
 </div></details>
-<p><strong>Output:</strong> <code>reports/jira-{KEY}-report.html</code></p>
+<details><summary>Review Feedback Mode</summary><div>
+<p>When a ticket comes back from review with issues, use: <code>/jira FO-2847 "Description of what needs fixing"</code></p>
+<ol>
+<li>Fetches ticket + latest comments (the review feedback)</li>
+<li>Checks for JAM recordings in review comments</li>
+<li>Parses feedback into actionable items: bugs found, missing requirements, design changes, code quality issues</li>
+<li>Loads previous context (project paths, branches) from saved state &mdash; avoids re-asking</li>
+<li>Plans fixes, presents to user for approval</li>
+<li>Implements the minimum changes needed</li>
+<li>Verifies with Playwright (if app running)</li>
+<li>Generates <code>jira-{KEY}-review-fix-report.html</code></li>
+<li>Offers to post a comment on Jira listing what was fixed + attach the report</li>
+</ol>
+</div></details>
+<p><strong>Output:</strong> <code>reports/jira-{KEY}-report.html</code> or <code>reports/jira-{KEY}-review-fix-report.html</code></p>
 <p><strong>Uses:</strong></p><div class="uses"><a href="#jam">/jam</a><a href="#jira-watch">/jira watch</a><a href="#code-analysis">/code-analysis</a><a href="#verify">/verify</a><a href="#">Paper MCP</a></div>
 <p><strong>Requires:</strong> <code>.env</code> with Jira credentials</p>
 </div>
