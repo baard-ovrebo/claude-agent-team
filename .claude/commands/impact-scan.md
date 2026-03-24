@@ -43,6 +43,34 @@ Extract:
 [Impact Scan] Reading impact scan report...
 ```
 
+**Prefer the JSON file over the HTML file** — the JSON is structured and machine-readable.
+
+Check if a JSON file exists alongside the HTML:
+```bash
+# If user provided .html, check for matching .json
+JSON_PATH="${report_path%.html}.json"
+ls "$JSON_PATH" 2>/dev/null && echo "JSON_FOUND" || echo "NO_JSON"
+```
+
+**If JSON file exists (preferred):**
+```bash
+python -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+print('Title:', data['title'])
+print('Change:', data['changeRequest'])
+print('Affected repos:', data['reposAffected'])
+for repo in data['affectedRepos']:
+    print(f'  {repo[\"name\"]}: {repo[\"fileCount\"]} files, impact={repo[\"impactLevel\"]}')
+for step in data['implementationOrder']:
+    print(f'  Step {step[\"step\"]}: {step[\"repo\"]} — {step[\"action\"]}')
+" "$JSON_PATH"
+```
+
+The JSON provides everything needed: repos, paths, files, change descriptions, implementation order, risk assessment. No HTML parsing required.
+
+**If no JSON file (fallback — parsing HTML):**
 Read the HTML report file and extract:
 - The original change request description
 - List of affected repositories (name, URL/path)
@@ -552,9 +580,107 @@ DEPENDENCY CHAIN:
 
 Check `.claude/project-profile.json` for design settings. Use project-appropriate styling.
 
-### Step 4.2 — Generate the Report
+### Step 4.2 — Generate the Structured JSON Data File
 
-Write `reports/impact-scan-report.html` — a self-contained HTML document.
+**MANDATORY — generate the JSON file BEFORE or AT THE SAME TIME as the HTML report.** The JSON contains the same data you already collected during the scan — just serialize it.
+
+Derive the filename from the change request description (same slug as the HTML):
+- HTML: `reports/impact-scan-{slug}.html`
+- JSON: `reports/impact-scan-{slug}.json`
+
+Write the JSON file with this schema:
+
+```json
+{
+  "title": "{short title derived from the change request}",
+  "changeRequest": "{the full original description}",
+  "date": "{YYYY-MM-DD}",
+  "reposScanned": {total count},
+  "reposAffected": {affected count},
+  "complexity": "{Low / Low-Medium / Medium / Medium-High / High / Very High}",
+  "executiveSummary": "{2-3 sentence overview}",
+  "architectureFlow": [
+    {
+      "name": "{component/repo name}",
+      "role": "{what it does in this flow, e.g., 'REST API Consumer', 'API Gateway', 'CRM Backend'}",
+      "type": "{client / gateway / backend / frontend / database / library / worker}"
+    }
+  ],
+  "implementationOrder": [
+    {
+      "step": 1,
+      "repo": "{repo name}",
+      "action": "{what to do in this repo}",
+      "reason": "{why this order, e.g., 'Backend must expose field first'}"
+    }
+  ],
+  "affectedRepos": [
+    {
+      "name": "{repo name}",
+      "impactLevel": "{HIGH / MEDIUM / LOW}",
+      "language": "{language / framework}",
+      "path": "{local path to repo}",
+      "fileCount": {number of files to change},
+      "changes": [
+        {
+          "number": 1,
+          "title": "{short description of the change}",
+          "file": "{relative file path}",
+          "location": "{line number or area, e.g., 'Line ~457' or 'ProductController.getAll()'}",
+          "changeType": "{Add / Modify / Create / Delete}",
+          "priority": "{MUST / SHOULD / CONSIDER}",
+          "complexity": "{Simple / Medium / Complex}",
+          "description": "{detailed description of what to change}",
+          "currentCode": "{optional: the current code snippet that needs changing, or null}",
+          "newCode": "{optional: what the code should look like after the change, or null}"
+        }
+      ]
+    }
+  ],
+  "unaffectedRepos": [
+    {
+      "name": "{repo name}",
+      "reason": "{why this repo doesn't need changes}"
+    }
+  ],
+  "riskAssessment": {
+    "breakingChanges": "{NONE / LOW / MEDIUM / HIGH}",
+    "migrationRisk": "{NONE / LOW / MEDIUM / HIGH}",
+    "testingEffort": "{LOW / MEDIUM / HIGH}",
+    "rollback": "{EASY / MODERATE / DIFFICULT}",
+    "details": "{explanation of risks and rollback strategy}"
+  },
+  "suggestedApproach": {
+    "prStrategy": "{e.g., 'Single PR to api-gateway', 'One PR per repo, merge in order'}",
+    "executionMode": "{sequential / parallel / mixed}",
+    "featureFlags": {true / false}
+  }
+}
+```
+
+Write the JSON using Python to ensure valid formatting:
+```bash
+python -c "
+import json
+data = {
+  'title': '{title}',
+  'changeRequest': '{description}',
+  # ... all fields populated from the scan results
+}
+with open('reports/impact-scan-{slug}.json', 'w') as f:
+    json.dump(data, f, indent=2)
+print('JSON saved: reports/impact-scan-{slug}.json')
+"
+```
+
+**The JSON file is the machine-readable version of the report.** It can be used by:
+- The `--apply` mode to read the scan results programmatically
+- External tools or CI pipelines that want to consume the impact data
+- Other commands that need to reference this scan later
+
+### Step 4.3 — Generate the HTML Report
+
+Write `reports/impact-scan-{slug}.html` — a self-contained HTML document. Use the same data that was serialized to JSON.
 
 **Report sections:**
 
