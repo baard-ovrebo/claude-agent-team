@@ -112,7 +112,7 @@ li{margin-bottom:4px;}
 <div class="hero">
   <h1>Claude Agent Team</h1>
   <p>28 slash commands that orchestrate specialized AI agents for software development</p>
-  <p style="font-size:12px;color:var(--light);margin-top:4px;">Last updated: 2026-03-23</p>
+  <p style="font-size:12px;color:var(--light);margin-top:4px;">Last updated: 2026-03-24</p>
   <div class="stats">
     <div class="stat"><div class="v">28</div><div class="l">Commands</div></div>
     <div class="stat"><div class="v">12</div><div class="l">Agent Roles</div></div>
@@ -208,7 +208,16 @@ JIRA_API_TOKEN=your-api-token</pre>
 <h3><code>/jira {KEY}</code> <span class="badge b-amber">Project Management</span></h3>
 <p class="desc">Full Jira ticket-to-resolution pipeline. Takes a ticket from assignment to completed implementation with design review, code analysis, and Jira updates.</p>
 <pre>/jira FO-2847
-/jira FO-2847 "Reviewer says the date format is wrong and missing validation"</pre>
+/jira FO-2847 "Reviewer says the date format is wrong and missing validation"
+/jira FO-2847 --add-context "Use ISO 8601 format, check DateUtils in shared/utils"
+/jira FO-2847 "Fix date format" --add-context "Must use existing DateUtils"</pre>
+<details><summary>Flags</summary><div>
+<table>
+<thead><tr><th>Flag</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--add-context "text"</code></td><td><strong>High-priority developer guidance</strong> that supplements the ticket description. Passed to ALL implementation agents as a top-level instruction. Takes precedence over ticket description when conflicting. Appears in ticket summary, Jira comment, and final report. Can combine with review feedback mode.</td></tr>
+</tbody></table>
+</div></details>
 <details><summary>What It Does (5 Phases)</summary><div>
 <ol>
 <li><strong>Fetch &amp; Analyze</strong> &mdash; fetches ticket via REST API, downloads/resizes image attachments, auto-detects JAM links and analyzes them via MCP, reads all comments for additional requirements and unanswered questions, classifies scope (UI/Backend/Full-stack)</li>
@@ -359,16 +368,22 @@ JIRA_API_TOKEN=your-api-token</pre>
 </tbody></table></div></details>
 <details><summary>The Plan &rarr; Design &rarr; Implement Flow</summary><div>
 <ol>
-<li><strong>Analyze</strong> &mdash; understand the request, identify files to create/modify, detect if UI changes needed</li>
+<li><strong>Analyze</strong> &mdash; reads 3-5 existing files first to understand conventions. Identifies files to create/modify, detects if UI changes needed</li>
 <li><strong>Design mockups</strong> (if UI) &mdash; create artboards in Paper via MCP, capture screenshots</li>
-<li><strong>Generate HTML plan</strong> &mdash; <code>reports/feature-plan.html</code> with embedded Paper screenshots, technical plan, API contracts, testing plan. User opens in browser to review.</li>
+<li><strong>Generate HTML plan</strong> &mdash; <code>reports/feature-plan.html</code> with <strong>embedded Paper screenshots</strong>, technical plan, API contracts, testing plan. <strong>Auto-opens in browser</strong> for review.</li>
 <li><strong>User approval gate</strong> &mdash; Accept / Adjust / Redesign / Cancel</li>
-<li><strong>Implement</strong> &mdash; follows the HTML plan exactly</li>
-<li><strong>Verify</strong> (if app running) &mdash; auto-offers Playwright E2E verification with screenshots</li>
+<li><strong>BEFORE screenshots</strong> (if app running) &mdash; captures current state with Playwright before any changes</li>
+<li><strong>Implement</strong> &mdash; follows the HTML plan. For large features, can spawn <strong>parallel Frontend + Backend agents</strong>. All agents match existing code style.</li>
+<li><strong>Code analysis</strong> &mdash; reviews the diff for security issues, logic errors, dead code. Auto-fixes critical issues.</li>
+<li><strong>Verify</strong> (if app running) &mdash; auto-offers Playwright E2E verification. Takes AFTER screenshots, generates before/after comparison.</li>
+<li><strong>Master HTML report</strong> &mdash; optional: compile everything into a comprehensive report (like /new-feature)</li>
 </ol>
 </div></details>
-<p><strong>Output:</strong> <code>reports/feature-plan.html</code> (plan) + <code>.claude/unprocessed_reports/YYYY-MM-DD_HH-MM-SS_feature_{slug}.md</code> (report)</p>
-<p><strong>Uses:</strong></p><div class="uses"><a href="#verify">/verify</a><a href="#">Paper MCP</a></div>
+<details><summary>Codebase Awareness</summary><div>
+<p>Before writing any code, /create reads existing files in the area it&rsquo;s working on. It identifies naming conventions, code style, architecture patterns, and existing utilities to reuse. Generated code matches the existing codebase &mdash; same indentation, bracket style, naming convention, error handling pattern, and import structure. Sub-agents receive the same instruction.</p>
+</div></details>
+<p><strong>Output:</strong> <code>reports/feature-plan.html</code> (plan, auto-opens) + <code>.claude/unprocessed_reports/YYYY-MM-DD_HH-MM-SS_feature_{slug}.md</code> (report) + <code>reports/verify-report.html</code> (if verified)</p>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#verify">/verify</a><a href="#code-analysis">/code-analysis</a><a href="#">Paper MCP</a></div>
 <p><strong>Used by:</strong></p><div class="uses"><a href="#changelog">/changelog</a> <span style="font-size:11px;color:var(--light);">reads its reports</span></div>
 </div>
 
@@ -695,7 +710,21 @@ JIRA_API_TOKEN=your-api-token</pre>
 /impact-scan "Add price field" --local-scan D:\Projects
 /impact-scan "Add price" --repos backend-api,frontend,shared-types
 /impact-scan --apply reports/impact-scan-salesorder-unit.html
-/impact-scan --apply report.html --target D:\Dev\feature-work</pre>
+/impact-scan --apply report.html --target D:\Dev\feature-work
+/impact-scan --convert-json reports/impact-scan-customer-status.html</pre>
+<details><summary>Flags</summary><div>
+<table>
+<thead><tr><th>Flag</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--org {url}</code></td><td>Scan all repos in a GitHub organization</td></tr>
+<tr><td><code>--local-scan {path}</code></td><td>Scan repos already cloned on local disk</td></tr>
+<tr><td><code>--repos repo1,repo2</code></td><td>Only scan specific repos (by name or path)</td></tr>
+<tr><td><code>--gh-user {account}</code></td><td>Use a specific GitHub account for org access</td></tr>
+<tr><td><code>--apply {report}</code></td><td>Implement ALL changes from a previous scan report locally (never pushes to remote)</td></tr>
+<tr><td><code>--apply {report} --target {path}</code></td><td>Clone affected repos into a specific directory before implementing</td></tr>
+<tr><td><code>--convert-json {html_path}</code></td><td>Parse an existing HTML report and generate a structured JSON file (same filename with .json extension)</td></tr>
+</tbody></table>
+</div></details>
 <details><summary>How It Works</summary><div>
 <ol>
 <li><strong>Resolve repos</strong> &mdash; fetch from GitHub org, scan local disk, or use specified repos</li>
@@ -739,7 +768,11 @@ JIRA_API_TOKEN=your-api-token</pre>
 <li><strong>Just the report</strong> &mdash; for planning purposes only</li>
 </ul>
 </div></details>
-<p><strong>Output:</strong> <code>reports/impact-scan-report.html</code> (auto-opens in browser)</p>
+<details><summary>JSON Dual Output</summary><div>
+<p>Every scan generates <strong>both an HTML and a JSON file</strong> (same filename, different extension). The JSON uses a structured schema with: title, changeRequest, date, reposScanned, reposAffected, complexity, executiveSummary, architectureFlow, implementationOrder, affectedRepos (with per-file changes + currentCode/newCode snippets), unaffectedRepos, riskAssessment, and suggestedApproach.</p>
+<p>The JSON can be consumed by <code>--apply</code> mode, CI pipelines, or external tools. Use <code>--convert-json</code> to retroactively generate JSON from older HTML-only reports.</p>
+</div></details>
+<p><strong>Output:</strong> <code>reports/impact-scan-{slug}.html</code> + <code>reports/impact-scan-{slug}.json</code> (auto-opens HTML in browser)</p>
 <p><strong>Requires:</strong> <code>gh</code> CLI for org scan, otherwise standalone</p>
 </div>
 
