@@ -19,10 +19,12 @@ You are a **Senior Software Architect** specializing in multi-repository systems
 | `--apply {report_path}` | **Apply Mode** — read a previous scan report and implement ALL changes locally | `/impact-scan --apply reports/impact-scan-salesorder-unit.html` |
 | `--apply {report_path} --target {path}` | **Apply to target** — clone repos into a specific directory | `/impact-scan --apply report.html --target D:\Dev\feature-work` |
 | `--convert-json {html_path}` | **Convert Mode** — parse an existing HTML report and generate the structured JSON file | `/impact-scan --convert-json reports/impact-scan-customer-status.html` |
+| `"description" --exists-check` | **Exists Check** — scan repos to determine if a feature ALREADY exists before suggesting changes | `/impact-scan "Does the REST API return product price?" --exists-check --org https://github.com/nexum-fo` |
 
 **Route:**
 - If `--convert-json` is present → Go to **CONVERT JSON MODE** (below)
 - If `--apply` is present → Go to **APPLY MODE** (below)
+- If `--exists-check` is present → Go to **EXISTS CHECK MODE** (below)
 - Otherwise → continue to PHASE 1 (scan mode)
 
 Extract:
@@ -31,8 +33,195 @@ Extract:
 - `--local-scan {path}` — path to scan for local repos
 - `--repos {list}` — comma-separated list of repo names or paths
 - `--convert-json {html_path}` — path to an existing HTML impact scan report to convert to JSON
+- `--exists-check` — check if the described feature already exists before planning changes
 - `--apply {report_path}` — path to a previously generated impact scan HTML report
 - `--target {path}` — directory to clone repos into (default: current directory)
+
+---
+
+## EXISTS CHECK MODE — Verify if a Feature Already Exists
+
+**Entered via `/impact-scan "Does the REST API return product price?" --exists-check`**
+
+This mode scans repos to determine whether the described feature/capability **already exists** in the codebase before planning any changes. It answers the question: "Is this already implemented somewhere?"
+
+### Exists Step 1 — Resolve Repos
+
+Use the same repo resolution as the normal scan mode (PHASE 1). Supports `--org`, `--local-scan`, `--repos`, and `--gh-user` flags.
+
+```
+[Impact Scan — Exists Check] Scanning repos to check if feature already exists...
+[Impact Scan — Exists Check] Feature query: "{DESCRIPTION}"
+```
+
+### Exists Step 2 — Extract Search Terms
+
+Parse the description into concrete search terms:
+
+```bash
+python -c "
+description = '{DESCRIPTION}'
+# Extract key entities: nouns, field names, endpoint patterns, class names
+# Example: 'Does the REST API return product price?'
+# → search for: 'product', 'price', 'productPrice', 'product_price', 'ProductPrice'
+# → endpoints: '/product', '/products'
+# → fields: 'price', 'unitPrice', 'amount'
+import re
+words = re.findall(r'[a-zA-Z]+', description.lower())
+# Remove stop words
+stop = {'does','the','a','an','is','are','in','for','to','of','and','or','it','has','have','return','returns','get','show','display','already','exist','exists','check','if'}
+keywords = [w for w in words if w not in stop and len(w) > 2]
+print('KEYWORDS:', ','.join(keywords))
+
+# Generate camelCase/snake_case/PascalCase variants
+for i in range(len(keywords)-1):
+    pair = keywords[i:i+2]
+    print('camel:', pair[0] + pair[1].capitalize())
+    print('snake:', '_'.join(pair))
+    print('pascal:', pair[0].capitalize() + pair[1].capitalize())
+"
+```
+
+### Exists Step 3 — Deep Search Each Repo
+
+For each repo, search comprehensively for evidence the feature exists:
+
+Launch **Explore agents** (up to 3 in parallel) per repo:
+
+> You are a **Feature Existence Detective**. Your job is to determine whether the following feature already exists in the repository at `{REPO_PATH}`:
+>
+> **Feature query:** "{DESCRIPTION}"
+>
+> ## Search Strategy
+>
+> 1. **Search for keywords** in source code: models, DTOs, controllers, services, serializers, response builders
+>    - Search for: `{keyword_variants}` (camelCase, snake_case, PascalCase)
+>    - Search in: `*.ts`, `*.js`, `*.java`, `*.cs`, `*.go`, `*.py`, `*.yml`, `*.yaml`
+>
+> 2. **Check API endpoints** — search for route definitions that might serve this feature
+>    - Look for related endpoint paths
+>    - Read the handler to see what fields it returns/accepts
+>
+> 3. **Check data models** — search for DTOs, interfaces, types, database models
+>    - Does the field/property exist in the model?
+>    - Is it populated/mapped in the service layer?
+>    - Is it exposed in the API response?
+>
+> 4. **Check OpenAPI/Swagger specs** — if present, check if the feature is documented
+>
+> 5. **Check tests** — test files often reveal what features are implemented
+>    - Search for test descriptions matching the feature
+>
+> 6. **Check database** — if migrations/schema files exist, check if relevant columns/tables exist
+>
+> ## Classification
+>
+> For each piece of evidence found, classify it:
+>
+> | Status | Meaning |
+> |--------|---------|
+> | **FULLY EXISTS** | The feature is completely implemented — model, service, API endpoint, all connected |
+> | **PARTIALLY EXISTS** | Some parts exist (e.g., field in model but not exposed in API, or endpoint exists but field is missing) |
+> | **NOT FOUND** | No evidence of this feature in this repo |
+> | **RELATED** | Something similar exists that could be extended (e.g., a different price field, a similar endpoint) |
+>
+> ## Output
+>
+> Write to `reports/exists-check-{repo_name}.json`:
+> ```json
+> {
+>   "repo": "{repo_name}",
+>   "path": "{REPO_PATH}",
+>   "status": "FULLY_EXISTS | PARTIALLY_EXISTS | NOT_FOUND | RELATED",
+>   "confidence": "HIGH | MEDIUM | LOW",
+>   "summary": "One paragraph explaining what was found",
+>   "evidence": [
+>     {
+>       "file": "src/models/Product.ts",
+>       "line": 42,
+>       "type": "model_field | endpoint | service_method | test | migration | config",
+>       "description": "Product model has a 'price' field of type number",
+>       "code": "price: number; // Unit price in cents",
+>       "relevance": "DIRECT | INDIRECT"
+>     }
+>   ],
+>   "gaps": [
+>     "Price field exists in model but is not included in the GET /products response DTO",
+>     "No test coverage for price in the API response"
+>   ],
+>   "relatedCode": [
+>     {
+>       "file": "src/dto/ProductResponse.ts",
+>       "description": "Response DTO — price field could be added here"
+>     }
+>   ]
+> }
+> ```
+
+### Exists Step 4 — Generate Exists Check Report
+
+Compile all per-repo results into an HTML report:
+
+```
+[Impact Scan — Exists Check] Generating report...
+```
+
+Launch a **backend-developer agent** to generate `reports/exists-check-{slug}.html`:
+
+> Generate a clean HTML report showing the results of a feature existence check.
+>
+> ## Data
+> Read all `reports/exists-check-*.json` files.
+>
+> ## Report Structure
+>
+> **Header:** "Feature Existence Check: {DESCRIPTION}"
+>
+> **Verdict Banner:**
+> - Green banner if FULLY EXISTS in all relevant repos: "This feature already exists"
+> - Amber banner if PARTIALLY EXISTS: "This feature partially exists — gaps identified"
+> - Red banner if NOT FOUND: "This feature does not exist — implementation needed"
+> - Blue banner if RELATED: "Similar features found — may be extendable"
+>
+> **Summary Table:**
+> | Repo | Status | Confidence | Summary |
+> | Evidence section per repo with code snippets
+> | Gaps section (what's missing if partial)
+> | Recommendation: "No changes needed" / "Extend existing code" / "New implementation required — run /impact-scan without --exists-check"
+>
+> **Styling:** Clean light theme, color-coded status badges, code blocks with syntax highlighting, collapsible evidence sections. Auto-opens in browser.
+
+### Exists Step 5 — Present Results & Offer Next Steps
+
+```
+[Impact Scan — Exists Check] Complete!
+
+**Query:** {DESCRIPTION}
+**Verdict:** {FULLY_EXISTS / PARTIALLY_EXISTS / NOT_FOUND / RELATED}
+
+| Repo | Status | Key Finding |
+|------|--------|-------------|
+| api-gateway | PARTIALLY_EXISTS | Field in OpenAPI spec but not mapped |
+| api-crm-2 | FULLY_EXISTS | Model + service + endpoint all present |
+
+**Report:** reports/exists-check-{slug}.html (opened in browser)
+```
+
+Ask the user:
+
+> "Feature existence check complete. What would you like to do?"
+
+Options:
+1. **Done** — I have the answer I needed
+2. **Run full impact scan** — Plan the implementation for what's missing (runs normal /impact-scan without --exists-check)
+3. **Apply partial fix** — Only implement the gaps identified in the exists check
+4. **Show me the code** — Open the specific files where the feature exists/should exist
+
+**If "Run full impact scan":** Re-run the command without `--exists-check`, passing the same description and flags. The exists check results will be used as context — the agent already knows what exists and only needs to plan what's missing.
+
+**If "Apply partial fix":** Use the gaps identified to create a targeted `/impact-scan --apply` scope — only the specific files and changes needed to close the gaps.
+
+**Stop here — exists check mode does not modify any code.**
 
 ---
 

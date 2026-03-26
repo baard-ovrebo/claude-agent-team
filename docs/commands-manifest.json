@@ -952,6 +952,12 @@
           "type": "string",
           "description": "Switch to a specific GitHub account for API calls",
           "example": "/impact-scan \"Add price\" --org https://github.com/nexum-fo --gh-user ext-bard-ovrebo"
+        },
+        {
+          "flag": "--exists-check",
+          "type": "boolean",
+          "description": "Check if the described feature already exists before planning changes. Scans models, DTOs, endpoints, services, tests, and migrations. Reports: FULLY_EXISTS, PARTIALLY_EXISTS, NOT_FOUND, or RELATED with evidence and code snippets.",
+          "example": "--exists-check"
         }
       ],
       "modes": [
@@ -979,6 +985,11 @@
           "name": "convert_json",
           "trigger": "/impact-scan --convert-json reports/impact-scan-report.html",
           "description": "Parse an existing HTML report and extract all data into a structured JSON file"
+        },
+        {
+          "name": "exists_check",
+          "trigger": "--exists-check flag",
+          "description": "Verify if a feature already exists in the codebase before planning implementation"
         }
       ],
       "output": [
