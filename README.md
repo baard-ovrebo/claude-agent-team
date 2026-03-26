@@ -1,6 +1,6 @@
 # Claude Agent Team
 
-An AI development team built on [Claude Code](https://claude.ai/claude-code) — 28 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
+An AI development team built on [Claude Code](https://claude.ai/claude-code) — 29 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
 
 No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines.
 

@@ -1,0 +1,1311 @@
+{
+  "version": "1.0",
+  "commandCount": 29,
+  "lastUpdated": "2026-03-26",
+  "commands": [
+    {
+      "name": "/jira",
+      "category": "Project Management",
+      "categoryColor": "#f59e0b",
+      "description": "Fetch a Jira ticket and orchestrate full implementation from assignment to resolution",
+      "usage": "/jira {ticket_key|mode} [--add-context \"context\"]",
+      "arguments": [
+        {
+          "name": "ticket_key_or_mode",
+          "type": "ticket_key",
+          "required": true,
+          "description": "Jira ticket key (e.g. FO-2847), or a mode keyword: sprint, teams, watch, resume",
+          "examples": [
+            "FO-2847",
+            "sprint",
+            "teams",
+            "watch FO-2847",
+            "resume FO-2847"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--add-context",
+          "shorthand": null,
+          "type": "string",
+          "description": "Inject high-priority developer guidance that supplements the ticket description and is passed to all implementation agents",
+          "example": "/jira FO-2847 --add-context \"Use the existing v2 API pattern\""
+        }
+      ],
+      "modes": [
+        {
+          "name": "ticket",
+          "trigger": "/jira FO-2847",
+          "description": "Single ticket mode \u00e2\u20ac\u201d fetch, analyze, plan, implement, and update the ticket"
+        },
+        {
+          "name": "sprint",
+          "trigger": "/jira sprint",
+          "description": "Batch sprint mode \u00e2\u20ac\u201d fetch all open sprint tickets, let user pick one or more to implement"
+        },
+        {
+          "name": "teams",
+          "trigger": "/jira teams",
+          "description": "List all available Scrum teams from Jira and display them"
+        },
+        {
+          "name": "watch",
+          "trigger": "/jira watch FO-2847",
+          "description": "Watch mode \u00e2\u20ac\u201d monitor a ticket's status and react to changes"
+        },
+        {
+          "name": "resume",
+          "trigger": "/jira resume FO-2847",
+          "description": "Resume mode \u00e2\u20ac\u201d continue implementation of a previously started ticket"
+        },
+        {
+          "name": "review_feedback",
+          "trigger": "/jira FO-2847 \"Review feedback to address\"",
+          "description": "Review feedback mode \u00e2\u20ac\u201d address specific review comments on a ticket"
+        }
+      ],
+      "output": [
+        "reports/jira-{ticket}-report.html"
+      ],
+      "uses": [
+        "/create",
+        "/bug",
+        "/report"
+      ],
+      "usedBy": [
+        "/full-pipeline"
+      ],
+      "requires": [
+        "JIRA_EMAIL",
+        "JIRA_API_TOKEN",
+        "JIRA_BASE_URL in .env"
+      ]
+    },
+    {
+      "name": "/jam",
+      "category": "Project Management",
+      "categoryColor": "#f59e0b",
+      "description": "Analyze JAM (jam.dev) recordings to understand bugs and feature requests captured in video",
+      "usage": "/jam {jam_url|jam_id|ticket_key}",
+      "arguments": [
+        {
+          "name": "reference",
+          "type": "url",
+          "required": true,
+          "description": "A JAM URL, JAM ID, or Jira ticket key (which will be searched for JAM links)",
+          "examples": [
+            "https://jam.dev/c/abc123",
+            "abc123",
+            "FO-2847"
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [
+        {
+          "name": "jam_url",
+          "trigger": "/jam https://jam.dev/c/abc123",
+          "description": "Directly analyze a JAM recording by URL or ID"
+        },
+        {
+          "name": "jira_ticket",
+          "trigger": "/jam FO-2847",
+          "description": "Look up the Jira ticket, find embedded JAM links, then analyze them"
+        }
+      ],
+      "output": [
+        "reports/jam-analysis.md"
+      ],
+      "uses": [
+        "/jira"
+      ],
+      "usedBy": [],
+      "requires": [
+        "JAM_API_TOKEN in .env (optional \u00e2\u20ac\u201d falls back to WebFetch)"
+      ]
+    },
+    {
+      "name": "/tempo",
+      "category": "Project Management",
+      "categoryColor": "#f59e0b",
+      "description": "Quick Jira time tracking \u00e2\u20ac\u201d log or view time on tickets without opening the browser",
+      "usage": "/tempo {addTime|getTime} {ticket} [start_time end_time|duration] [\"description\"]",
+      "arguments": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "description": "Action to perform: addTime or getTime",
+          "examples": [
+            "addTime",
+            "getTime"
+          ]
+        },
+        {
+          "name": "ticket",
+          "type": "ticket_key",
+          "required": true,
+          "description": "Jira ticket key to log time against",
+          "examples": [
+            "FO-2872"
+          ]
+        },
+        {
+          "name": "time_range_or_duration",
+          "type": "string",
+          "required": false,
+          "description": "Clock range (14:00 16:00) or shorthand duration (2h, 45m, 1h30m) \u00e2\u20ac\u201d required for addTime",
+          "examples": [
+            "14:00 16:00",
+            "2h",
+            "45m",
+            "1h30m"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "description": "Quoted description of the work done \u00e2\u20ac\u201d required for addTime",
+          "examples": [
+            "\"Implemented invoice reference fix\"",
+            "\"Code review and testing\""
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [
+        {
+          "name": "addTime",
+          "trigger": "/tempo addTime FO-2872 14:00 16:00 \"description\"",
+          "description": "Log time to a ticket with clock range or duration shorthand"
+        },
+        {
+          "name": "getTime",
+          "trigger": "/tempo getTime FO-2872",
+          "description": "View all logged time on a ticket in a formatted table"
+        }
+      ],
+      "output": [],
+      "uses": [],
+      "usedBy": [],
+      "requires": [
+        "JIRA_EMAIL",
+        "JIRA_API_TOKEN",
+        "JIRA_BASE_URL in .env"
+      ]
+    },
+    {
+      "name": "/create",
+      "category": "Universal",
+      "categoryColor": "#6366f1",
+      "description": "Context-aware feature creator that adapts role to the project type (game, SaaS, API, mobile, application)",
+      "usage": "/create \"feature description\"",
+      "arguments": [
+        {
+          "name": "feature_description",
+          "type": "string",
+          "required": true,
+          "description": "Natural language description of the feature to implement",
+          "examples": [
+            "Monsters that hunt the player using 3D models",
+            "Add a dark mode toggle to the settings page",
+            "REST endpoint for bulk invoice export"
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [
+        {
+          "name": "role_adaptation",
+          "trigger": "Automatic \u00e2\u20ac\u201d reads ProjectType from .claude/.env or ~/.claude/.env",
+          "description": "Assumes the correct senior developer role based on ProjectType (GAME, APPLICATION, SAAS, API, MOBILE) and detected tech stack"
+        }
+      ],
+      "output": [
+        "reports/feature-plan.html",
+        "reports/feature-implementation-report.html",
+        ".claude/unprocessed_reports/{timestamp}_feature_{slug}.md"
+      ],
+      "uses": [
+        "/code-analysis",
+        "/verify"
+      ],
+      "usedBy": [
+        "/new-feature",
+        "/jira"
+      ],
+      "requires": [
+        "ProjectType in .claude/.env (optional \u00e2\u20ac\u201d auto-detects stack if missing)"
+      ]
+    },
+    {
+      "name": "/bug",
+      "category": "Universal",
+      "categoryColor": "#6366f1",
+      "description": "Context-aware bug fixer with screenshot analysis \u00e2\u20ac\u201d investigates, diagnoses, fixes, and verifies",
+      "usage": "/bug \"bug description\" [+ optional pasted screenshots]",
+      "arguments": [
+        {
+          "name": "bug_description",
+          "type": "string",
+          "required": true,
+          "description": "Natural language description of the bug; screenshots pasted in conversation are also analyzed",
+          "examples": [
+            "Player falls through the floor when jumping near walls",
+            "Login page shows 500 error after session timeout",
+            "Invoice PDF export generates blank pages for multi-line items"
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [
+        {
+          "name": "screenshot_analysis",
+          "trigger": "Automatic when screenshots are pasted into the conversation alongside the command",
+          "description": "Reads and analyzes pasted screenshots for error messages, stack traces, UI state, and console output"
+        }
+      ],
+      "output": [
+        ".claude/unprocessed_reports/{timestamp}_bugfix_{slug}.md"
+      ],
+      "uses": [
+        "/verify"
+      ],
+      "usedBy": [
+        "/jira"
+      ],
+      "requires": [
+        "ProjectType in .claude/.env (optional)"
+      ]
+    },
+    {
+      "name": "/changelog",
+      "category": "Universal",
+      "categoryColor": "#6366f1",
+      "description": "Compile all unprocessed AI agent reports into a styled HTML changelog that matches the project design",
+      "usage": "/changelog",
+      "arguments": [],
+      "flags": [],
+      "modes": [
+        {
+          "name": "project_themed",
+          "trigger": "Automatic \u00e2\u20ac\u201d reads .claude/project-profile.json for design settings",
+          "description": "Generates a changelog styled to match the project's colors, fonts, and theme (falls back to auto-detecting CSS variables or package.json)"
+        }
+      ],
+      "output": [
+        "reports/changelog.html"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/create",
+        "/bug"
+      ],
+      "requires": [
+        ".claude/unprocessed_reports/ \u00e2\u20ac\u201d must contain at least one .md report"
+      ]
+    },
+    {
+      "name": "/new-feature",
+      "category": "Feature Development",
+      "categoryColor": "#7c3aed",
+      "description": "Six-phase feature development pipeline \u00e2\u20ac\u201d plan, UI design in Paper, parallel frontend/backend implementation, report",
+      "usage": "/new-feature \"feature request description\"",
+      "arguments": [
+        {
+          "name": "feature_request",
+          "type": "string",
+          "required": true,
+          "description": "Natural language description of the feature to build \u00e2\u20ac\u201d the pipeline handles planning, design, implementation, and reporting",
+          "examples": [
+            "Add product search with filters and sorting",
+            "User notification system with email and in-app alerts"
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/feature-plan.html",
+        "reports/implementation-frontend.md",
+        "reports/implementation-backend.md",
+        "reports/feature-report.html"
+      ],
+      "uses": [
+        "/code-analysis",
+        "/verify",
+        "/dev-team"
+      ],
+      "usedBy": [],
+      "requires": [
+        "Project paths (will ask if not found)",
+        "Paper MCP (optional \u00e2\u20ac\u201d for UI mockups)"
+      ]
+    },
+    {
+      "name": "/code-analysis",
+      "category": "Feature Development",
+      "categoryColor": "#7c3aed",
+      "description": "Analyze only the current session's code changes (git diff) for security issues, logic errors, and code quality",
+      "usage": "/code-analysis [context]",
+      "arguments": [
+        {
+          "name": "context",
+          "type": "string",
+          "required": false,
+          "description": "Optional context about the changes being reviewed",
+          "examples": [
+            "Reviewing invoice export feature changes"
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/code-analysis.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/create",
+        "/new-feature",
+        "/jira"
+      ],
+      "requires": [
+        "Git repository with uncommitted or recent changes"
+      ]
+    },
+    {
+      "name": "/dev-team",
+      "category": "Code Quality",
+      "categoryColor": "#ef4444",
+      "description": "Full iterative dev team loop \u00e2\u20ac\u201d security audit + quality scan + fix + test, repeated until zero findings",
+      "usage": "/dev-team",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/security-audit.md",
+        "reports/quality-audit.md",
+        "reports/fixes-applied.md",
+        "reports/test-report.md",
+        "reports/master-report.html"
+      ],
+      "uses": [
+        "/security-audit",
+        "/quality-audit",
+        "/fix-all",
+        "/test-all",
+        "/master-report"
+      ],
+      "usedBy": [
+        "/full-pipeline",
+        "/create"
+      ],
+      "requires": []
+    },
+    {
+      "name": "/security-audit",
+      "category": "Code Quality",
+      "categoryColor": "#ef4444",
+      "description": "OWASP Top 10 security scan \u00e2\u20ac\u201d injection, broken auth, XSS, data exposure, access control, misconfiguration",
+      "usage": "/security-audit",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/security-audit.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/dev-team",
+        "/full-pipeline"
+      ],
+      "requires": []
+    },
+    {
+      "name": "/quality-audit",
+      "category": "Code Quality",
+      "categoryColor": "#ef4444",
+      "description": "Code quality scan \u00e2\u20ac\u201d dead code, type safety, performance, error handling, API design, maintainability",
+      "usage": "/quality-audit",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/quality-audit.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/dev-team",
+        "/full-pipeline"
+      ],
+      "requires": []
+    },
+    {
+      "name": "/fix-all",
+      "category": "Code Quality",
+      "categoryColor": "#ef4444",
+      "description": "Fix all issues found by the security and quality auditors \u00e2\u20ac\u201d reads reports and applies fixes in CRITICAL > WARNING > INFO order",
+      "usage": "/fix-all",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/fixes-applied.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/dev-team",
+        "/full-pipeline"
+      ],
+      "requires": [
+        "reports/security-audit.md",
+        "reports/quality-audit.md"
+      ]
+    },
+    {
+      "name": "/test-all",
+      "category": "Code Quality",
+      "categoryColor": "#ef4444",
+      "description": "Write and run comprehensive unit, security, and regression tests for all recent fixes until 100% pass",
+      "usage": "/test-all",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/test-report.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/dev-team",
+        "/full-pipeline"
+      ],
+      "requires": [
+        "reports/fixes-applied.md"
+      ]
+    },
+    {
+      "name": "/master-report",
+      "category": "Code Quality",
+      "categoryColor": "#ef4444",
+      "description": "Compile all agent reports into a single polished HTML master report with dashboard, findings, fixes, and test results",
+      "usage": "/master-report",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/master-report.html"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/dev-team",
+        "/full-pipeline"
+      ],
+      "requires": [
+        "reports/security-audit.md",
+        "reports/quality-audit.md",
+        "reports/fixes-applied.md",
+        "reports/test-report.md"
+      ]
+    },
+    {
+      "name": "/unit-test",
+      "category": "Testing & Deps",
+      "categoryColor": "#3b82f6",
+      "description": "Multi-language unit test engineer \u00e2\u20ac\u201d scan coverage gaps, write tests, and run them across any project stack",
+      "usage": "/unit-test {*|file_path|--fix-ignored} [project_name_or_path]",
+      "arguments": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": true,
+          "description": "Test target: * for full project scan, a file path for single-file tests, or --fix-ignored to fix skipped tests",
+          "examples": [
+            "*",
+            "* control-backend-api",
+            "se/inbooks/backend/admin/auth/AdminAuth.java",
+            "--fix-ignored",
+            "--fix-ignored gateway-backend"
+          ]
+        },
+        {
+          "name": "project_name_or_path",
+          "type": "path",
+          "required": false,
+          "description": "Optional project name or path \u00e2\u20ac\u201d resolves against known projects or common parent paths",
+          "examples": [
+            "control-backend-api",
+            "gateway-backend",
+            "D:\\Projects\\my-app"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--fix-ignored",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Find all ignored, disabled, or skipped tests and let the user select which to fix",
+          "example": "/unit-test --fix-ignored control-backend-api"
+        }
+      ],
+      "modes": [
+        {
+          "name": "full_scan",
+          "trigger": "/unit-test *",
+          "description": "Scan the entire project, map coverage gaps, and write tests for all uncovered code"
+        },
+        {
+          "name": "single_file",
+          "trigger": "/unit-test path/to/File.java",
+          "description": "Write unit tests for a single file or class only"
+        },
+        {
+          "name": "fix_ignored",
+          "trigger": "/unit-test --fix-ignored",
+          "description": "Find all @Ignore, .skip, xdescribe, or disabled tests \u00e2\u20ac\u201d list them and let user choose which to fix"
+        }
+      ],
+      "output": [],
+      "uses": [],
+      "usedBy": [
+        "/dev-team",
+        "/full-pipeline"
+      ],
+      "requires": []
+    },
+    {
+      "name": "/playwright-test",
+      "category": "Testing & Deps",
+      "categoryColor": "#3b82f6",
+      "description": "Run full Playwright E2E test suite, fix failures, identify coverage gaps, and write new tests",
+      "usage": "/playwright-test",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "demo-api/reports/playwright-report/index.html",
+        "demo-api/reports/playwright-test-report.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/full-pipeline"
+      ],
+      "requires": [
+        "Playwright installed in demo-api/ (auto-installs if missing)",
+        "App running or Docker container on port 3000"
+      ]
+    },
+    {
+      "name": "/deps",
+      "category": "Testing & Deps",
+      "categoryColor": "#3b82f6",
+      "description": "Dependency health audit \u00e2\u20ac\u201d vulnerabilities (CVEs), outdated packages, license risks across any project stack",
+      "usage": "/deps [--vuln-only|--outdated|--license] [project_name_or_path]",
+      "arguments": [
+        {
+          "name": "project_name_or_path",
+          "type": "path",
+          "required": false,
+          "description": "Optional project name or path \u00e2\u20ac\u201d uses current directory if not specified",
+          "examples": [
+            "control-backend-api",
+            "gateway-backend",
+            "D:\\Projects\\my-app"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--vuln-only",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Only scan for CVE vulnerabilities \u00e2\u20ac\u201d skip license and outdated checks",
+          "example": "/deps --vuln-only"
+        },
+        {
+          "flag": "--outdated",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Only check for newer package versions available",
+          "example": "/deps --outdated gateway-backend"
+        },
+        {
+          "flag": "--license",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Only check license compatibility risks",
+          "example": "/deps --license"
+        }
+      ],
+      "modes": [
+        {
+          "name": "full",
+          "trigger": "/deps",
+          "description": "Full audit covering vulnerabilities, outdated packages, and license risks"
+        },
+        {
+          "name": "vuln_only",
+          "trigger": "/deps --vuln-only",
+          "description": "Vulnerability-only scan focused on CVEs and security advisories"
+        },
+        {
+          "name": "outdated",
+          "trigger": "/deps --outdated",
+          "description": "Check only for newer versions of installed packages"
+        },
+        {
+          "name": "license",
+          "trigger": "/deps --license",
+          "description": "Check only for license compatibility risks (GPL, AGPL, etc.)"
+        }
+      ],
+      "output": [
+        "reports/deps-report.html"
+      ],
+      "uses": [],
+      "usedBy": [],
+      "requires": []
+    },
+    {
+      "name": "/verify",
+      "category": "Testing & Deps",
+      "categoryColor": "#3b82f6",
+      "description": "E2E verification with Playwright \u00e2\u20ac\u201d verifies the latest changes work in the live app using the project profile",
+      "usage": "/verify [report_path|setup|\"description\"]",
+      "arguments": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "description": "Empty = auto-verify latest report; path = verify specific report; 'setup' = configure profile; text = verify described thing",
+          "examples": [
+            "",
+            "reports/jira-FO-2847-report.html",
+            "setup",
+            "Check that login redirects to dashboard"
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [
+        {
+          "name": "auto",
+          "trigger": "/verify",
+          "description": "Read the most recent unprocessed report and verify the changes described in it"
+        },
+        {
+          "name": "specific",
+          "trigger": "/verify reports/jira-FO-2847-report.html",
+          "description": "Verify the changes described in a specific report file"
+        },
+        {
+          "name": "setup",
+          "trigger": "/verify setup",
+          "description": "Interactive project profile builder \u00e2\u20ac\u201d sets up frontend URL, auth type, selectors, and test credentials"
+        },
+        {
+          "name": "manual",
+          "trigger": "/verify \"Check that login redirects to dashboard\"",
+          "description": "Verify a specific behavior described in free text"
+        }
+      ],
+      "output": [
+        "reports/verification-screenshots/"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/create",
+        "/bug",
+        "/new-feature",
+        "/jira"
+      ],
+      "requires": [
+        ".claude/project-profile.json (created via /verify setup)",
+        "App running on localhost"
+      ]
+    },
+    {
+      "name": "/git",
+      "category": "Git Operations",
+      "categoryColor": "#22c55e",
+      "description": "Git operations manager \u00e2\u20ac\u201d sync branches, resolve merge conflicts, and report branch status across projects",
+      "usage": "/git {sync branch|status} [project_name_or_path] [--fix-merge-errors] [--all]",
+      "arguments": [
+        {
+          "name": "operation",
+          "type": "string",
+          "required": true,
+          "description": "Operation to perform: sync or status",
+          "examples": [
+            "sync develop",
+            "sync main",
+            "status",
+            "status control-backend-api"
+          ]
+        },
+        {
+          "name": "project_name_or_path",
+          "type": "path",
+          "required": false,
+          "description": "Optional project name or path \u00e2\u20ac\u201d uses current directory if not specified",
+          "examples": [
+            "control-backend-api",
+            "gateway-backend"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--fix-merge-errors",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Attempt automatic conflict resolution after merge",
+          "example": "/git sync develop --fix-merge-errors"
+        },
+        {
+          "flag": "--all",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Apply the sync operation to all known projects in PROJECT_MAP",
+          "example": "/git sync develop --all"
+        }
+      ],
+      "modes": [
+        {
+          "name": "sync",
+          "trigger": "/git sync develop",
+          "description": "Merge latest from the specified branch into the current branch"
+        },
+        {
+          "name": "status",
+          "trigger": "/git status",
+          "description": "Show branch status \u00e2\u20ac\u201d current branch, uncommitted changes, remote comparison \u00e2\u20ac\u201d for current or all projects"
+        }
+      ],
+      "output": [],
+      "uses": [],
+      "usedBy": [
+        "/jira"
+      ],
+      "requires": [
+        "Git repository"
+      ]
+    },
+    {
+      "name": "/repo-setup",
+      "category": "Onboarding",
+      "categoryColor": "#06b6d4",
+      "description": "Clone and fully set up a repository \u00e2\u20ac\u201d analyze stack, install dependencies, configure env, build, and verify",
+      "usage": "/repo-setup [repo_uri|org_url|local_path] [--analyze-only] [--auto-setup] [--search \"text\"] [--gh-user account] [--local-scan path]",
+      "arguments": [
+        {
+          "name": "repo_uri_or_org",
+          "type": "url",
+          "required": false,
+          "description": "Git repo URI, GitHub org/user URL, local path, or empty for current directory",
+          "examples": [
+            "https://github.com/org/project.git",
+            "https://github.com/nexum-fo",
+            "D:\\Projects\\my-app",
+            ""
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--analyze-only",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Clone and report on the repo structure without installing anything",
+          "example": "/repo-setup https://github.com/org/project.git --analyze-only"
+        },
+        {
+          "flag": "--auto-setup",
+          "shorthand": null,
+          "type": "boolean",
+          "description": "Clone, install, configure, build, and test all repos without prompting",
+          "example": "/repo-setup https://github.com/nexum-fo --auto-setup"
+        },
+        {
+          "flag": "--search",
+          "shorthand": null,
+          "type": "string",
+          "description": "When scanning an org, only process repos whose name, description, or README matches this text",
+          "example": "/repo-setup https://github.com/nexum-fo --search \"Public API\""
+        },
+        {
+          "flag": "--gh-user",
+          "shorthand": null,
+          "type": "string",
+          "description": "Switch to a specific GitHub account before API calls and cloning",
+          "example": "/repo-setup https://github.com/nexum-fo --gh-user ext-bard-ovrebo"
+        },
+        {
+          "flag": "--local-scan",
+          "shorthand": null,
+          "type": "path",
+          "description": "Skip cloning and instead scan the local filesystem for repos belonging to the org",
+          "example": "/repo-setup https://github.com/nexum-fo --local-scan D:\\Kunder"
+        }
+      ],
+      "modes": [
+        {
+          "name": "single_repo",
+          "trigger": "/repo-setup https://github.com/org/project.git",
+          "description": "Full setup of a single repository \u00e2\u20ac\u201d clone, analyze, install, configure, build, verify"
+        },
+        {
+          "name": "org_scan",
+          "trigger": "/repo-setup https://github.com/nexum-fo",
+          "description": "Scan all repositories in a GitHub organization or user account"
+        },
+        {
+          "name": "local_repo",
+          "trigger": "/repo-setup D:\\Projects\\my-app",
+          "description": "Analyze an already-cloned local repository"
+        },
+        {
+          "name": "current_dir",
+          "trigger": "/repo-setup",
+          "description": "Analyze the repository in the current working directory"
+        }
+      ],
+      "output": [
+        "reports/repo-setup-report.html"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/create-project"
+      ],
+      "requires": [
+        "git",
+        "gh CLI (for GitHub org scans)"
+      ]
+    },
+    {
+      "name": "/impact-scan",
+      "category": "Onboarding",
+      "categoryColor": "#06b6d4",
+      "description": "Cross-repository impact scanner \u00e2\u20ac\u201d analyze where a change needs to be made across an entire codebase or org",
+      "usage": "/impact-scan \"description\" [--org url|--local-scan path|--repos list] | --apply report | --convert-json report",
+      "arguments": [
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "description": "Change request description \u00e2\u20ac\u201d what needs to be changed across the codebase",
+          "examples": [
+            "Add product price to payload response",
+            "Rename customerId to clientId across all services"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--org",
+          "shorthand": null,
+          "type": "url",
+          "description": "Scan all repos in a GitHub organization",
+          "example": "/impact-scan \"Add price field\" --org https://github.com/nexum-fo"
+        },
+        {
+          "flag": "--local-scan",
+          "shorthand": null,
+          "type": "path",
+          "description": "Scan repos already on disk at the given path",
+          "example": "/impact-scan \"Add price field\" --local-scan D:\\Projects"
+        },
+        {
+          "flag": "--repos",
+          "shorthand": null,
+          "type": "string",
+          "description": "Comma-separated list of specific repo names or paths to scan",
+          "example": "/impact-scan \"Add price\" --repos control-backend-api,control-frontend"
+        },
+        {
+          "flag": "--apply",
+          "shorthand": null,
+          "type": "path",
+          "description": "Apply mode \u00e2\u20ac\u201d read a previous scan report and implement ALL changes locally",
+          "example": "/impact-scan --apply reports/impact-scan-salesorder-unit.html"
+        },
+        {
+          "flag": "--target",
+          "shorthand": null,
+          "type": "path",
+          "description": "Target directory for cloning repos when using --apply (default: current directory)",
+          "example": "/impact-scan --apply report.html --target D:\\Dev\\feature-work"
+        },
+        {
+          "flag": "--convert-json",
+          "shorthand": null,
+          "type": "path",
+          "description": "Parse an existing HTML impact scan report and generate a structured JSON file from it",
+          "example": "/impact-scan --convert-json reports/impact-scan-customer-status.html"
+        },
+        {
+          "flag": "--gh-user",
+          "shorthand": null,
+          "type": "string",
+          "description": "Switch to a specific GitHub account for API calls",
+          "example": "/impact-scan \"Add price\" --org https://github.com/nexum-fo --gh-user ext-bard-ovrebo"
+        }
+      ],
+      "modes": [
+        {
+          "name": "scan",
+          "trigger": "/impact-scan \"description\"",
+          "description": "Scan current org/project context to find all files that need changing"
+        },
+        {
+          "name": "org_scan",
+          "trigger": "/impact-scan \"description\" --org url",
+          "description": "Fetch all repos from a GitHub org and scan them all"
+        },
+        {
+          "name": "local_scan",
+          "trigger": "/impact-scan \"description\" --local-scan path",
+          "description": "Scan repos already on disk at the given path"
+        },
+        {
+          "name": "apply",
+          "trigger": "/impact-scan --apply reports/impact-scan-report.html",
+          "description": "Read a previously generated impact scan report and implement all the described changes"
+        },
+        {
+          "name": "convert_json",
+          "trigger": "/impact-scan --convert-json reports/impact-scan-report.html",
+          "description": "Parse an existing HTML report and extract all data into a structured JSON file"
+        }
+      ],
+      "output": [
+        "reports/impact-scan-{slug}.html",
+        "reports/impact-scan-{slug}.json (convert mode)"
+      ],
+      "uses": [],
+      "usedBy": [],
+      "requires": [
+        "gh CLI (for org scans)"
+      ]
+    },
+    {
+      "name": "/report",
+      "category": "Onboarding",
+      "categoryColor": "#06b6d4",
+      "description": "Analyze all code changes on the current branch and generate an HTML report with testing instructions \u00e2\u20ac\u201d optionally upload to Jira",
+      "usage": "/report [ticket_key|--since commit|--compare branch]",
+      "arguments": [
+        {
+          "name": "ticket_key",
+          "type": "ticket_key",
+          "required": false,
+          "description": "Optional Jira ticket key \u00e2\u20ac\u201d if provided, the report is automatically uploaded to that ticket",
+          "examples": [
+            "FO-2847"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--since",
+          "shorthand": null,
+          "type": "string",
+          "description": "Analyze changes since a specific commit hash",
+          "example": "/report --since abc1234"
+        },
+        {
+          "flag": "--compare",
+          "shorthand": null,
+          "type": "string",
+          "description": "Compare current branch against a specific branch instead of the auto-detected base",
+          "example": "/report --compare develop"
+        }
+      ],
+      "modes": [
+        {
+          "name": "auto",
+          "trigger": "/report",
+          "description": "Analyze current branch vs its auto-detected base branch (main/master/develop)"
+        },
+        {
+          "name": "auto_upload",
+          "trigger": "/report FO-2847",
+          "description": "Analyze and automatically upload the report to the specified Jira ticket"
+        },
+        {
+          "name": "since_commit",
+          "trigger": "/report --since abc1234",
+          "description": "Analyze changes starting from a specific commit"
+        },
+        {
+          "name": "compare_branch",
+          "trigger": "/report --compare develop",
+          "description": "Compare the current branch against a specific branch"
+        }
+      ],
+      "output": [
+        "reports/change-report.html"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/jira"
+      ],
+      "requires": [
+        "Git repository",
+        "JIRA_EMAIL, JIRA_API_TOKEN, JIRA_BASE_URL in .env (for Jira upload)"
+      ]
+    },
+    {
+      "name": "/create-project",
+      "category": "Onboarding",
+      "categoryColor": "#06b6d4",
+      "description": "From idea to running application \u00e2\u20ac\u201d ask clarifying questions, design architecture + UI in Paper, get approval, then build the full project with a team of agents",
+      "usage": "/create-project \"project idea description\"",
+      "arguments": [
+        {
+          "name": "project_idea",
+          "type": "string",
+          "required": true,
+          "description": "Natural language description of the project to build from scratch",
+          "examples": [
+            "A task management app with Kanban boards and team collaboration",
+            "REST API for a pet adoption service with PostgreSQL",
+            "A 2D platformer game with procedural level generation",
+            "SaaS dashboard for monitoring IoT devices"
+          ]
+        }
+      ],
+      "flags": [],
+      "modes": [
+        {
+          "name": "full_pipeline",
+          "trigger": "/create-project \"description\"",
+          "description": "Full pipeline: clarifying Q&A -> architecture design -> UI mockups in Paper -> HTML plan -> user approval -> parallel agent implementation -> testing -> deployment"
+        }
+      ],
+      "output": [
+        "reports/project-plan.html",
+        "reports/project-implementation-report.html",
+        "{project_path}/ (the full project)"
+      ],
+      "uses": [
+        "/repo-setup",
+        "/dev-team",
+        "/docker-build",
+        "/docker-deploy"
+      ],
+      "usedBy": [],
+      "requires": [
+        "Paper MCP (optional \u00e2\u20ac\u201d for UI mockups)",
+        "Docker (optional \u00e2\u20ac\u201d for containerized projects)"
+      ]
+    },
+    {
+      "name": "/full-pipeline",
+      "category": "Docker",
+      "categoryColor": "#14b8a6",
+      "description": "Complete delivery pipeline \u00e2\u20ac\u201d code quality loop, Playwright E2E, Docker build + deploy + integration tests, master report",
+      "usage": "/full-pipeline",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/security-audit.md",
+        "reports/quality-audit.md",
+        "reports/fixes-applied.md",
+        "reports/test-report.md",
+        "reports/playwright-test-report.md",
+        "reports/docker-build-report.md",
+        "reports/docker-deploy-report.md",
+        "reports/docker-integration-report.md",
+        "reports/master-report.html"
+      ],
+      "uses": [
+        "/security-audit",
+        "/quality-audit",
+        "/fix-all",
+        "/test-all",
+        "/playwright-test",
+        "/docker-build",
+        "/docker-deploy",
+        "/docker-test",
+        "/master-report"
+      ],
+      "usedBy": [],
+      "requires": [
+        "Docker",
+        "Playwright"
+      ]
+    },
+    {
+      "name": "/docker-build",
+      "category": "Docker",
+      "categoryColor": "#14b8a6",
+      "description": "Build, validate, and security-scan the Docker image \u00e2\u20ac\u201d checks size, non-root user, health check, and CVEs",
+      "usage": "/docker-build",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/docker-build-report.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/full-pipeline",
+        "/create-project"
+      ],
+      "requires": [
+        "Docker",
+        "Dockerfile and docker-compose.yml in demo-api/"
+      ]
+    },
+    {
+      "name": "/docker-deploy",
+      "category": "Docker",
+      "categoryColor": "#14b8a6",
+      "description": "Deploy the application with Docker Compose, wait for health check, verify endpoints, and report all access info",
+      "usage": "/docker-deploy",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/docker-deploy-report.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/full-pipeline"
+      ],
+      "requires": [
+        "Docker",
+        "docker-compose.yml in demo-api/",
+        "Image built via /docker-build"
+      ]
+    },
+    {
+      "name": "/docker-test",
+      "category": "Docker",
+      "categoryColor": "#14b8a6",
+      "description": "Run comprehensive integration tests against a live Docker deployment \u00e2\u20ac\u201d auth flow, CRUD, security, edge cases",
+      "usage": "/docker-test",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/docker-integration-report.md"
+      ],
+      "uses": [],
+      "usedBy": [
+        "/full-pipeline"
+      ],
+      "requires": [
+        "Running Docker container on port 3000 (deploy via /docker-deploy first)"
+      ]
+    },
+    {
+      "name": "/docker-teardown",
+      "category": "Docker",
+      "categoryColor": "#14b8a6",
+      "description": "Safely tear down the Docker deployment, clean up containers and networks, and report freed resources",
+      "usage": "/docker-teardown",
+      "arguments": [],
+      "flags": [],
+      "modes": [],
+      "output": [
+        "reports/docker-teardown-report.md"
+      ],
+      "uses": [],
+      "usedBy": [],
+      "requires": [
+        "Docker",
+        "Running containers from docker-compose.yml in demo-api/"
+      ]
+    },
+    {
+      "name": "/api-discover",
+      "category": "Onboarding",
+      "categoryColor": "#06b6d4",
+      "description": "Discover all API endpoints on a domain by scanning org repos. Generates Swagger-like HTML documentation.",
+      "usage": "/api-discover {endpoint_url_or_pattern} [--org url] [--local-scan path] [--repo path]",
+      "arguments": [
+        {
+          "name": "endpoint_url",
+          "type": "url",
+          "required": true,
+          "description": "API endpoint URL or domain pattern",
+          "examples": [
+            "https://orderslip.api.24sevenoffice.com/orderslips/33/lines",
+            "*.api.24sevenoffice.com"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--org",
+          "type": "url",
+          "description": "GitHub org URL to scan repos from",
+          "example": "--org https://github.com/nexum-fo"
+        },
+        {
+          "flag": "--local-scan",
+          "type": "path",
+          "description": "Path to scan for local repos",
+          "example": "--local-scan D:\\Projects"
+        },
+        {
+          "flag": "--repo",
+          "type": "path",
+          "description": "Single repo path to scan",
+          "example": "--repo D:\\Projects\u0007pi-orderslip"
+        },
+        {
+          "flag": "--gh-user",
+          "type": "string",
+          "description": "Use a specific GitHub account",
+          "example": "--gh-user ext-bard-ovrebo"
+        },
+        {
+          "flag": "--search",
+          "type": "string",
+          "description": "Filter repos by name/README content",
+          "example": "--search \"orderslip\""
+        },
+        {
+          "flag": "--include-private",
+          "type": "boolean",
+          "description": "Include private/internal endpoints",
+          "example": "--include-private"
+        },
+        {
+          "flag": "--report",
+          "type": "path",
+          "description": "Re-open a previously generated report",
+          "example": "--report reports/api-docs-crm.html"
+        }
+      ],
+      "modes": [
+        {
+          "name": "discover",
+          "trigger": "Default \u2014 provide a URL or pattern",
+          "description": "Scans repos for all endpoints matching the domain"
+        },
+        {
+          "name": "view",
+          "trigger": "--report {path}",
+          "description": "Opens a previously generated report in the browser"
+        }
+      ],
+      "output": [
+        "reports/api-docs-{domain}.html",
+        "reports/api-endpoints-{repo}.json"
+      ],
+      "uses": [],
+      "usedBy": [],
+      "requires": [
+        "gh CLI for org scan"
+      ]
+    }
+  ]
+}
