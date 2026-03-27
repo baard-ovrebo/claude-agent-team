@@ -959,6 +959,64 @@ Also fetch available transitions for later use:
 source .env && curl -s -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" "${JIRA_BASE_URL}/rest/api/3/issue/$ARGUMENTS/transitions" | python -m json.tool > /tmp/jira-transitions.json
 ```
 
+### Step 1.2b — Check & Offer "In Progress" Transition
+
+After fetching the ticket, check if the ticket status is **NOT** "In Progress". If it is anything else (e.g., "To Do", "Open", "Ready for Dev", "Backlog", "Selected for Development", etc.), prompt the user before continuing:
+
+```
+[Jira] Ticket {KEY} status is currently: "{status}"
+```
+
+> "This ticket is not set to **In Progress**. Would you like me to move it to In Progress before I start working on it?"
+>
+> 1. **Yes** — Transition to In Progress
+> 2. **No** — Keep current status and continue
+
+**If the user says yes:**
+
+Find the "In Progress" transition from the transitions fetched in Step 1.2:
+
+```bash
+python -c "
+import json
+with open('/tmp/jira-transitions.json') as f:
+    data = json.load(f)
+for t in data.get('transitions', []):
+    name = t['name'].lower()
+    if 'progress' in name or 'in progress' in name:
+        print(f'TRANSITION_ID:{t[\"id\"]}')
+        print(f'TRANSITION_NAME:{t[\"name\"]}')
+        break
+else:
+    # List all available transitions so user can pick
+    print('NO_MATCH')
+    for t in data.get('transitions', []):
+        print(f'  {t[\"id\"]}: {t[\"name\"]}')
+"
+```
+
+If a matching transition is found, execute it:
+```bash
+source .env && curl -s -w "\n%{http_code}" -X POST \
+  -H "Content-Type: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}/transitions" \
+  -d '{"transition": {"id": "{transition_id}"}}'
+```
+
+```
+[Jira] ✓ Ticket {KEY} moved to In Progress
+```
+
+If no "In Progress" transition is available (the ticket's workflow may not allow it from the current state), tell the user:
+```
+[Jira] Could not find an "In Progress" transition from current status "{status}".
+Available transitions: {list from /tmp/jira-transitions.json}
+```
+Let the user pick one, or skip.
+
+**If the ticket is already "In Progress":** Skip this step silently and continue.
+
 ### Step 1.3 — Download Attachments
 
 For each attachment (especially images), download them to a local temp directory:
