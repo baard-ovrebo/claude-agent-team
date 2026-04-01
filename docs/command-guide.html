@@ -210,13 +210,38 @@ JIRA_API_TOKEN=your-api-token</pre>
 <pre>/jira FO-2847
 /jira FO-2847 "Reviewer says the date format is wrong and missing validation"
 /jira FO-2847 --add-context "Use ISO 8601 format, check DateUtils in shared/utils"
-/jira FO-2847 "Fix date format" --add-context "Must use existing DateUtils"</pre>
+/jira FO-2847 "Fix date format" --add-context "Must use existing DateUtils"
+/jira FO-2847 --autonomous
+/jira sprint --autonomous</pre>
 <details><summary>Flags</summary><div>
 <table>
 <thead><tr><th>Flag</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>--add-context "text"</code></td><td><strong>High-priority developer guidance</strong> that supplements the ticket description. Passed to ALL implementation agents as a top-level instruction. Takes precedence over ticket description when conflicting. Appears in ticket summary, Jira comment, and final report. Can combine with review feedback mode.</td></tr>
+<tr><td><code>--autonomous</code></td><td><strong>Fully autonomous mode.</strong> Works on the ticket with ZERO user interaction. Evaluates 5 clarity criteria &mdash; if any fail, the ticket is SKIPPED (not asked about). When clear: auto-transitions to In Progress, auto-creates branch (<code>bugfix/FO-xxx</code>, <code>feature/FO-xxx</code>, <code>hotfix/FO-xxx</code> based on issue type), implements without approval gates, runs code analysis + verification, generates a markdown report. <strong>All changes LOCAL ONLY</strong> &mdash; no Jira comments, no uploads, no remote pushes. Works with <code>sprint</code> mode to batch-process all tickets.</td></tr>
 </tbody></table>
+</div></details>
+<details><summary>Autonomous Mode &mdash; Deep Dive</summary><div>
+<p><strong>Clarity Gate (5 criteria, ALL must pass):</strong></p>
+<ol>
+<li>What needs to change is described</li>
+<li>Where in the codebase is identifiable</li>
+<li>Expected behavior is described or inferable</li>
+<li>No unanswered questions in comments</li>
+<li>No conflicting instructions between description and comments</li>
+</ol>
+<p><strong>Branch naming:</strong> Auto-maps issue type to prefix:</p>
+<table>
+<thead><tr><th>Issue Type</th><th>Branch Prefix</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>Bug, DevBug, Defect</td><td><code>bugfix/</code></td><td><code>bugfix/FO-2847</code></td></tr>
+<tr><td>Hotfix</td><td><code>hotfix/</code></td><td><code>hotfix/FO-2850</code></td></tr>
+<tr><td>Story, Task, Oppgave</td><td><code>feature/</code></td><td><code>feature/FO-2855</code></td></tr>
+<tr><td>Technical Debt</td><td><code>chore/</code></td><td><code>chore/FO-2860</code></td></tr>
+<tr><td>Spike</td><td><code>spike/</code></td><td><code>spike/FO-2870</code></td></tr>
+</tbody></table>
+<p><strong>Sprint mode:</strong> <code>/jira sprint --autonomous</code> processes all tickets sequentially, skips unclear ones, and generates a summary table showing completed vs skipped with reasons.</p>
+<p><strong>Output:</strong> <code>reports/{timestamp}_autonomous_{KEY}.md</code> per ticket with branch info, all changes, testing instructions.</p>
 </div></details>
 <details><summary>What It Does (5 Phases)</summary><div>
 <ol>
