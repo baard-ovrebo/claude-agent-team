@@ -31,6 +31,12 @@
           "type": "string",
           "description": "Inject high-priority developer guidance that supplements the ticket description and is passed to all implementation agents",
           "example": "/jira FO-2847 --add-context \"Use the existing v2 API pattern\""
+        },
+        {
+          "flag": "--autonomous",
+          "type": "boolean",
+          "description": "Work on ticket without user interaction. Skips tickets with unclear requirements. Auto-creates branches (bugfix/FO-xxx, feature/FO-xxx), implements, generates markdown report. All changes LOCAL ONLY \u2014 no Jira updates, no pushes.",
+          "example": "--autonomous"
         }
       ],
       "modes": [
@@ -63,6 +69,11 @@
           "name": "review_feedback",
           "trigger": "/jira FO-2847 \"Review feedback to address\"",
           "description": "Review feedback mode \u00e2\u20ac\u201d address specific review comments on a ticket"
+        },
+        {
+          "name": "autonomous",
+          "trigger": "--autonomous flag",
+          "description": "Fully autonomous mode \u2014 skip unclear tickets, auto-branch, implement, report. No user questions, no Jira updates, no remote pushes."
         }
       ],
       "output": [

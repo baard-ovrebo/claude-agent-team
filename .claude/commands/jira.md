@@ -16,6 +16,7 @@ You are the **Jira Ticket Orchestrator** — a senior technical lead who takes a
 - If `$ARGUMENTS` starts with `resume` (e.g., `resume FO-2847`) → Go to **RESUME MODE** (below)
 - If `$ARGUMENTS` is a ticket key followed by a quoted message (e.g., `FO-2847 "Review feedback to address"`) → Go to **REVIEW FEEDBACK MODE** (below)
 - If `$ARGUMENTS` contains `--add-context` → Extract the ticket key and the context string, then go to **PHASE 1** with EXTRA_CONTEXT set
+- If `$ARGUMENTS` contains `--autonomous` → Extract the ticket key, then go to **AUTONOMOUS MODE** (below)
 - If `$ARGUMENTS` is a ticket key like `FO-2847` → Go to **PHASE 1** (single ticket mode)
 
 ### Parsing `--add-context`
@@ -251,6 +252,252 @@ After all selected tickets are processed (or the user stops), present a sprint s
 
 **Total time logged:** {sum}
 **Reports generated:** {list of report files}
+```
+
+---
+
+## AUTONOMOUS MODE — Work Without User Interaction
+
+**Entered via `/jira FO-2847 --autonomous` or `/jira sprint --autonomous`**
+
+In autonomous mode, the agent works on the ticket **without asking the user any questions**. If the ticket lacks sufficient information to proceed confidently, it **skips** the ticket rather than guessing or asking.
+
+### Autonomous Step 1 — Fetch & Analyze (Silent)
+
+Run the same fetch as PHASE 1 (Steps 1.1 and 1.2) to get the full ticket data. Do NOT prompt the user for anything.
+
+### Autonomous Step 2 — Clarity Gate
+
+After analyzing the ticket, evaluate whether you have enough information to implement it:
+
+**Check each criterion:**
+
+| Criterion | Clear? |
+|---|---|
+| **What** needs to change is described | YES / NO |
+| **Where** in the codebase (feature area, component, endpoint) is identifiable | YES / NO |
+| **Expected behavior** is described or inferable | YES / NO |
+| **No unanswered questions** in the comments from the team | YES / NO |
+| **No conflicting instructions** between description and comments | YES / NO |
+
+**Decision:**
+- If ALL criteria are YES → **PROCEED** (Step 3)
+- If ANY criterion is NO → **SKIP** this ticket
+
+**If SKIPPING:**
+```
+[Jira Autonomous] SKIPPED: {KEY} — {summary}
+  Reason: {which criteria failed}
+  - {e.g., "Description doesn't specify which endpoint to modify"}
+  - {e.g., "Unanswered question in comments from Natalie (2026-03-18)"}
+```
+
+Write a skip entry to the autonomous log and move on. Do NOT post comments, transition status, or modify anything on Jira.
+
+### Autonomous Step 3 — Transition to In Progress
+
+If the ticket is not already "In Progress", transition it automatically (no prompt):
+
+```bash
+source .env && python -c "
+import json
+with open('/tmp/jira-transitions.json') as f:
+    data = json.load(f)
+for t in data.get('transitions', []):
+    if 'progress' in t['name'].lower():
+        print(t['id'])
+        break
+"
+```
+
+If a transition ID is found:
+```bash
+source .env && curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  "${JIRA_BASE_URL}/rest/api/3/issue/{KEY}/transitions" \
+  -d '{"transition": {"id": "{transition_id}"}}'
+```
+
+### Autonomous Step 4 — Auto-Detect Project Paths
+
+Check for a saved state file first:
+```bash
+ls reports/jira-state-{KEY}.json 2>/dev/null
+```
+
+If state exists, load project paths from it.
+
+If no state exists, try to auto-detect from the ticket context:
+- Read the ticket's Scrum Team, Epic, labels, and components
+- Check `.claude/project-profile.json` in the current directory for known paths
+- Check `INDEX.md` for project mappings
+
+**If paths cannot be auto-detected → SKIP the ticket.** Do NOT ask the user.
+
+```
+[Jira Autonomous] SKIPPED: {KEY} — Could not auto-detect project paths
+```
+
+### Autonomous Step 5 — Auto-Create Branch
+
+Create a branch automatically based on the ticket type:
+
+```bash
+python -c "
+ticket_type = '{ISSUE_TYPE}'.lower()  # Bug, DevBug, Story, Task, Defect, etc.
+ticket_key = '{KEY}'
+
+# Map issue type to branch prefix
+type_map = {
+    'bug': 'bugfix',
+    'devbug': 'bugfix',
+    'defect': 'bugfix',
+    'hotfix': 'hotfix',
+    'story': 'feature',
+    'task': 'feature',
+    'oppgave': 'feature',
+    'improvement': 'feature',
+    'epic': 'feature',
+    'sub-task': 'feature',
+    'technical debt': 'chore',
+    'spike': 'spike',
+}
+
+prefix = type_map.get(ticket_type, 'feature')
+branch_name = f'{prefix}/{ticket_key}'
+print(branch_name)
+"
+```
+
+For each project path, create the branch:
+```bash
+cd "{project_path}" && git fetch origin && git checkout -b "{branch_name}" origin/develop 2>/dev/null || git checkout -b "{branch_name}" origin/main 2>/dev/null || git checkout -b "{branch_name}" origin/master
+```
+
+```
+[Jira Autonomous] Created branch: {branch_name}
+  - Backend: {backend_path} ✓
+  - Frontend: {frontend_path} ✓
+```
+
+### Autonomous Step 6 — Implement (No User Gates)
+
+Run the implementation phase (same as PHASE 3 in normal mode) but with these differences:
+
+- **No design review gate** — if UI changes are needed, create the design but don't wait for approval
+- **No plan approval gate** — proceed directly with the plan
+- **No "how would you like to proceed" questions** — always proceed with the suggested approach
+- **Code analysis runs automatically** — fix critical issues, skip warnings that need judgment calls
+- **Verification runs automatically** if the app is running
+
+### Autonomous Step 7 — Generate Markdown Report
+
+**MANDATORY — always generate a markdown report when in autonomous mode.**
+
+```bash
+mkdir -p reports
+TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+```
+
+Write to `reports/{TIMESTAMP}_autonomous_{KEY}.md`:
+
+```markdown
+# Autonomous Resolution: {KEY}
+
+**Ticket:** {KEY} — {summary}
+**Type:** {issue_type} | **Priority:** {priority}
+**Date:** {YYYY-MM-DD HH:MM:SS}
+**Mode:** Autonomous (no user interaction)
+
+## Branch Info
+- **Branch name:** {branch_name}
+- **Base branch:** {base_branch} (e.g., develop, main)
+- **Projects:**
+  - Backend: `{backend_path}` — branch `{branch_name}`
+  - Frontend: `{frontend_path}` — branch `{branch_name}`
+
+## Ticket Summary
+{description from Jira}
+
+## What Was Done
+{detailed list of changes}
+- {change 1}
+- {change 2}
+- {change 3}
+
+## Files Changed
+### Backend
+- `{file}` — {what changed and why}
+
+### Frontend
+- `{file}` — {what changed and why}
+
+## Code Analysis
+- Critical issues found: {count}
+- Issues auto-fixed: {count}
+- Remaining warnings: {count}
+
+## Verification
+- App running: {yes/no}
+- Playwright verification: {passed/skipped/failed}
+- Screenshots: {paths if taken}
+
+## Testing Instructions
+1. {step to verify the fix/feature}
+2. {step}
+3. {step}
+
+## What Was NOT Done
+{anything the agent chose to skip or couldn't resolve autonomously}
+
+## Next Steps
+- [ ] Review the branch `{branch_name}` in each project
+- [ ] Run full test suite
+- [ ] Create PR when ready
+```
+
+### Autonomous Step 8 — Present Summary (Single Line)
+
+```
+[Jira Autonomous] COMPLETED: {KEY} — {summary}
+  Branch: {branch_name}
+  Files changed: {count}
+  Report: reports/{TIMESTAMP}_autonomous_{KEY}.md
+```
+
+**Do NOT:**
+- Post comments to Jira
+- Upload reports to Jira
+- Transition the ticket to Review/Done
+- Push branches to remote
+- Ask the user anything
+
+All changes are LOCAL ONLY. The markdown report tells the user everything they need to review and take action.
+
+### Sprint Integration
+
+When `--autonomous` is combined with `sprint`:
+```
+/jira sprint --autonomous
+```
+
+After the team selection, process ALL tickets sequentially:
+1. For each ticket → run Autonomous Steps 2-8
+2. Skip tickets that fail the clarity gate
+3. At the end, generate a sprint summary:
+
+```
+[Jira Autonomous] Sprint processing complete
+
+| # | Key | Status | Branch | Files | Reason |
+|---|-----|--------|--------|-------|--------|
+| 1 | FO-2847 | COMPLETED | bugfix/FO-2847 | 4 | — |
+| 2 | FO-2850 | SKIPPED | — | — | Unclear: endpoint not specified |
+| 3 | FO-2855 | COMPLETED | feature/FO-2855 | 2 | — |
+
+Completed: 2/3 | Skipped: 1/3
+Reports: reports/
 ```
 
 ---
