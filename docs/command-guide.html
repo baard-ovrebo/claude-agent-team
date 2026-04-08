@@ -76,6 +76,7 @@ li{margin-bottom:4px;}
   <a href="#create" data-cmd="create">/create</a>
   <a href="#bug" data-cmd="bug">/bug</a>
   <a href="#changelog" data-cmd="changelog">/changelog</a>
+  <a href="#council" data-cmd="council">/council</a>
   <a href="#create-project" data-cmd="create-project">/create-project</a>
   <div class="cat" style="color:var(--purple);">Feature Development</div>
   <a href="#new-feature" data-cmd="new-feature">/new-feature</a>
@@ -445,6 +446,65 @@ JIRA_API_TOKEN=your-api-token</pre>
 </div></details>
 <p><strong>Output:</strong> <code>reports/changelog.html</code></p>
 <p><strong>Reads from:</strong></p><div class="uses"><a href="#create">/create</a> <a href="#bug">/bug</a> <span style="font-size:11px;color:var(--light);">report files</span></div>
+</div>
+
+<div class="cmd-card" style="border-left-color:var(--indigo);" id="council">
+<h3><code>/council "question"</code> <span class="badge b-indigo">Universal</span></h3>
+<p class="desc">Multi-model decision engine. Consults ChatGPT and Gemini in parallel, then Claude synthesizes all perspectives into a unified recommendation. Prevents anchoring bias by forming its own opinion first.</p>
+<pre>/council "Should we use GraphQL or REST for our new public API?"
+/council "Best auth strategy for microservices?" --tier pro
+/council "Implement a rate limiter middleware" --code
+/council "Review this PR" --review src/auth/middleware.ts
+/council "Redux vs Zustand for state management" --debate
+/council --config
+/council --cost</pre>
+<details><summary>Modes</summary><div>
+<table>
+<thead><tr><th>Mode</th><th>Flag</th><th>What It Does</th></tr></thead>
+<tbody>
+<tr><td><strong>Consult</strong></td><td><em>(default)</em></td><td>Query all models, get synthesized recommendation with consensus areas, divergent opinions, and implementation plan</td></tr>
+<tr><td><strong>Code</strong></td><td><code>--code</code></td><td>All models produce code implementations. Side-by-side comparison: patterns, libraries, edge case coverage. Picks best or merges.</td></tr>
+<tr><td><strong>Review</strong></td><td><code>--review {file}</code></td><td>All models review the same code. Deduplicates findings (shared findings get confidence boost). Categorizes: Critical/Warning/Info.</td></tr>
+<tr><td><strong>Debate</strong></td><td><code>--debate</code></td><td>Models argue opposing positions. Claude moderates, identifies strongest/weakest arguments, delivers verdict.</td></tr>
+<tr><td><strong>Config</strong></td><td><code>--config</code></td><td>Interactive setup for API keys (OpenAI + Google AI). Saves to <code>.claude/council.env</code>, auto-adds to .gitignore.</td></tr>
+<tr><td><strong>Cost</strong></td><td><code>--cost</code></td><td>Show total API usage: calls, tokens, estimated cost across all council sessions.</td></tr>
+</tbody></table>
+</div></details>
+<details><summary>Model Tiers</summary><div>
+<table>
+<thead><tr><th>Tier</th><th>ChatGPT</th><th>Gemini</th><th>Best For</th></tr></thead>
+<tbody>
+<tr><td><strong>budget</strong> (default)</td><td>gpt-4o-mini</td><td>gemini-2.0-flash-lite</td><td>Quick opinions, routine decisions (~$0.001)</td></tr>
+<tr><td><strong>balanced</strong></td><td>gpt-4o</td><td>gemini-2.5-flash</td><td>Architecture decisions, tech choices (~$0.01-0.05)</td></tr>
+<tr><td><strong>pro</strong></td><td>o3-mini</td><td>gemini-2.5-pro</td><td>Critical decisions, complex trade-offs (~$0.05-0.50)</td></tr>
+</tbody></table>
+</div></details>
+<details><summary>How Synthesis Works</summary><div>
+<ol>
+<li><strong>Claude forms own opinion FIRST</strong> &mdash; before reading other responses (prevents anchoring bias)</li>
+<li>Reads ChatGPT and Gemini responses</li>
+<li>Identifies: consensus areas, unique insights per model, blind spots, disagreements</li>
+<li>Synthesizes unified recommendation incorporating the best from all perspectives</li>
+<li>Rates confidence: HIGH (all agree), MEDIUM (minor disagreements), LOW (fundamental disagreement)</li>
+</ol>
+</div></details>
+<details><summary>Flags</summary><div>
+<table>
+<thead><tr><th>Flag</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--models gpt,gemini</code></td><td>Which models to consult (default: both)</td></tr>
+<tr><td><code>--tier budget|balanced|pro</code></td><td>Model quality tier (default: budget)</td></tr>
+<tr><td><code>--code</code></td><td>Code implementation comparison mode</td></tr>
+<tr><td><code>--review {file}</code></td><td>Multi-model code review mode</td></tr>
+<tr><td><code>--debate</code></td><td>Adversarial debate mode</td></tr>
+<tr><td><code>--context "text"</code></td><td>Extra project context for all models</td></tr>
+<tr><td><code>--config</code></td><td>Set up API keys</td></tr>
+<tr><td><code>--cost</code></td><td>Show usage/cost stats</td></tr>
+</tbody></table>
+</div></details>
+<p><strong>Output:</strong> <code>reports/council-{slug}.md</code> + <code>reports/council-{slug}.html</code> (for significant decisions) + <code>reports/council-responses.json</code></p>
+<p><strong>After decision:</strong> Can hand off directly to <a href="#create">/create</a> to implement the recommended approach.</p>
+<p><strong>Requires:</strong> <code>.claude/council.env</code> with OpenAI + Google AI API keys</p>
 </div>
 
 <div class="cmd-card" style="border-left-color:var(--indigo);" id="create-project">
