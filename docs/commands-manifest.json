@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "commandCount": 29,
-  "lastUpdated": "2026-03-26",
+  "commandCount": 30,
+  "lastUpdated": "2026-04-08",
   "commands": [
     {
       "name": "/jira",
@@ -1327,6 +1327,122 @@
       "usedBy": [],
       "requires": [
         "gh CLI for org scan"
+      ]
+    },
+    {
+      "name": "/council",
+      "category": "Universal",
+      "categoryColor": "#6366f1",
+      "description": "Multi-model decision engine. Consults ChatGPT + Gemini in parallel, then Claude synthesizes all perspectives into a unified recommendation.",
+      "usage": "/council \"question\" [--models gpt,gemini] [--tier budget|balanced|pro] [--code] [--review file] [--debate]",
+      "arguments": [
+        {
+          "name": "question",
+          "type": "string",
+          "required": true,
+          "description": "The technical question or decision to consult on",
+          "examples": [
+            "Should we use GraphQL or REST?",
+            "Best auth strategy for our SaaS?",
+            "Implement a rate limiter middleware"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--models",
+          "type": "string",
+          "description": "Which models to consult: gpt, gemini, or gpt,gemini (default: both)",
+          "example": "--models gpt"
+        },
+        {
+          "flag": "--tier",
+          "type": "string",
+          "description": "Model quality tier: budget (default), balanced, pro",
+          "example": "--tier pro"
+        },
+        {
+          "flag": "--code",
+          "type": "boolean",
+          "description": "Ask all models to produce code implementations, compare side-by-side",
+          "example": "--code"
+        },
+        {
+          "flag": "--review",
+          "type": "path",
+          "description": "Code review mode \u2014 all models review a file, diff, or PR",
+          "example": "--review src/auth/middleware.ts"
+        },
+        {
+          "flag": "--debate",
+          "type": "boolean",
+          "description": "Adversarial mode \u2014 models argue opposing positions, Claude moderates",
+          "example": "--debate"
+        },
+        {
+          "flag": "--context",
+          "type": "string",
+          "description": "Additional project context included in prompts to all models",
+          "example": "--context \"We use PostgreSQL and Redis\""
+        },
+        {
+          "flag": "--cost",
+          "type": "boolean",
+          "description": "Show API usage stats and cost estimates without querying",
+          "example": "--cost"
+        },
+        {
+          "flag": "--config",
+          "type": "boolean",
+          "description": "Interactive setup for API keys",
+          "example": "--config"
+        }
+      ],
+      "modes": [
+        {
+          "name": "consult",
+          "trigger": "Default \u2014 provide a question",
+          "description": "Query all models, synthesize unified recommendation"
+        },
+        {
+          "name": "code",
+          "trigger": "--code flag",
+          "description": "All models produce code, compare implementations side-by-side"
+        },
+        {
+          "name": "review",
+          "trigger": "--review {file}",
+          "description": "All models review code, deduplicate findings, confidence-boost shared findings"
+        },
+        {
+          "name": "debate",
+          "trigger": "--debate flag",
+          "description": "Models argue opposing positions, Claude moderates and delivers verdict"
+        },
+        {
+          "name": "config",
+          "trigger": "--config flag",
+          "description": "Interactive API key setup"
+        },
+        {
+          "name": "cost",
+          "trigger": "--cost flag",
+          "description": "Show usage stats"
+        }
+      ],
+      "output": [
+        "reports/council-{slug}.md",
+        "reports/council-{slug}.html",
+        "reports/council-responses.json"
+      ],
+      "uses": [
+        "/create"
+      ],
+      "usedBy": [],
+      "requires": [
+        "OpenAI API key (for ChatGPT)",
+        "Google AI key (for Gemini)",
+        ".claude/council.env"
       ]
     }
   ]
