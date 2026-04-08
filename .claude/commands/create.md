@@ -93,12 +93,60 @@ The user has typed something like:
 
 ### Step 1.1 — Analyze the Request
 
+**Check if `--council` flag was passed.** If so, set COUNCIL_REQUESTED=true.
+
 Break down the feature request:
 1. **What** needs to be created (the deliverable)
 2. **Where** in the codebase it should live (based on project structure)
 3. **How** it connects to existing code (imports, dependencies, integration points)
 4. **What files** need to be created or modified
 5. **Does it involve UI changes?** — if yes, design mockups are needed
+
+### Step 1.1b — Council Consultation (if applicable)
+
+**This step runs if:**
+- The user passed `--council` flag, OR
+- The agent determines the feature would benefit from multi-model consultation
+
+**When should the agent RECOMMEND consulting the council?**
+
+| Criterion | Triggers Recommendation |
+|---|---|
+| **Architecture decision** | Feature requires choosing between fundamentally different patterns |
+| **Multiple valid approaches** | 3+ legitimate ways to build this, each with different trade-offs |
+| **Performance-critical** | Feature involves real-time, high-throughput, or optimization |
+| **New technology** | Feature requires introducing a new library, framework, or tool to the project |
+| **Cross-cutting concern** | Feature touches auth, caching, state management, or data layer design |
+
+**Do NOT recommend for:** Simple CRUD features, UI-only changes, bug fixes, text/styling changes, features where only one reasonable approach exists.
+
+**If recommending (not forced):**
+> "This feature involves {reason}. I'd recommend consulting the LLM Council for additional perspectives. Cost: ~${estimate}."
+
+Options:
+1. **Consult the council** — Get perspectives from ChatGPT + Gemini
+2. **Skip** — Proceed with my recommendation only
+3. **Pro tier** — Use higher-capability models
+
+**If council is invoked:**
+
+```
+[Create] Consulting the LLM Council on approach...
+```
+
+Query the council with feature + project context:
+```
+/council "How should we implement: {FEATURE_DESCRIPTION}?
+
+PROJECT CONTEXT:
+- ProjectType: {type}
+- Stack: {language} + {framework}
+- Existing patterns: {brief description of current architecture}
+
+What is the best implementation approach? Consider: architecture patterns, existing codebase conventions, testing strategy, and potential edge cases."
+```
+
+After the council returns, include the synthesis in the plan (Step 1.3). Note consensus and any disagreements.
 
 ### Step 1.2 — Design Mockups (if UI changes)
 

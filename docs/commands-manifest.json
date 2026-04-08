@@ -233,7 +233,20 @@
           ]
         }
       ],
-      "flags": [],
+      "flags": [
+        {
+          "flag": "--council",
+          "type": "boolean",
+          "description": "Consult the LLM Council before planning. Also auto-recommended for architecture decisions, new tech, performance-critical, or cross-cutting features.",
+          "example": "--council"
+        },
+        {
+          "flag": "--tier",
+          "type": "string",
+          "description": "Council model tier: budget (default), balanced, pro",
+          "example": "--tier pro"
+        }
+      ],
       "modes": [
         {
           "name": "role_adaptation",
@@ -248,7 +261,8 @@
       ],
       "uses": [
         "/code-analysis",
-        "/verify"
+        "/verify",
+        "/council"
       ],
       "usedBy": [
         "/new-feature",

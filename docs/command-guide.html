@@ -381,7 +381,9 @@ JIRA_API_TOKEN=your-api-token</pre>
 <p class="desc">Context-aware feature creator. Reads ProjectType from <code>.claude/.env</code>, adapts role (Game Dev, App Dev, SaaS Dev, etc.), generates an HTML plan with Paper design mockups, gets user approval, implements, then verifies with Playwright.</p>
 <pre>/create "Monsters that hunt the player using pathfinding AI"
 /create "Add dark mode toggle to settings page"
-/create "REST endpoint for bulk invoice export"</pre>
+/create "REST endpoint for bulk invoice export"
+/create "Event-driven notification system" --council
+/create "Implement caching layer for API" --council --tier pro</pre>
 <details><summary>Role Adaptation</summary><div>
 <table>
 <thead><tr><th>ProjectType</th><th>Stack</th><th>Role Assumed</th></tr></thead>
@@ -411,7 +413,10 @@ JIRA_API_TOKEN=your-api-token</pre>
 <p>Before writing any code, /create reads existing files in the area it&rsquo;s working on. It identifies naming conventions, code style, architecture patterns, and existing utilities to reuse. Generated code matches the existing codebase &mdash; same indentation, bracket style, naming convention, error handling pattern, and import structure. Sub-agents receive the same instruction.</p>
 </div></details>
 <p><strong>Output:</strong> <code>reports/feature-plan.html</code> (plan, auto-opens) + <code>.claude/unprocessed_reports/YYYY-MM-DD_HH-MM-SS_feature_{slug}.md</code> (report) + <code>reports/verify-report.html</code> (if verified)</p>
-<p><strong>Uses:</strong></p><div class="uses"><a href="#verify">/verify</a><a href="#code-analysis">/code-analysis</a><a href="#">Paper MCP</a></div>
+<details><summary>LLM Council Integration</summary><div>
+<p><code>--council</code> flag forces consultation with ChatGPT + Gemini before planning. Also auto-recommended when the feature involves: architecture decisions, 3+ valid approaches, performance-critical design, new technology introduction, or cross-cutting concerns (auth, caching, state management). Council synthesis is included in the HTML plan document.</p>
+</div></details>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#verify">/verify</a><a href="#code-analysis">/code-analysis</a><a href="#council">/council</a><a href="#">Paper MCP</a></div>
 <p><strong>Used by:</strong></p><div class="uses"><a href="#changelog">/changelog</a> <span style="font-size:11px;color:var(--light);">reads its reports</span></div>
 </div>
 
