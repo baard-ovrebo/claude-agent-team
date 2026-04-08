@@ -37,6 +37,12 @@
           "type": "boolean",
           "description": "Work on ticket without user interaction. Skips tickets with unclear requirements. Auto-creates branches (bugfix/FO-xxx, feature/FO-xxx), implements, generates markdown report. All changes LOCAL ONLY \u2014 no Jira updates, no pushes.",
           "example": "--autonomous"
+        },
+        {
+          "flag": "--council",
+          "type": "boolean",
+          "description": "Consult the LLM Council (ChatGPT + Gemini) before committing to an approach. Also auto-recommended for architecture decisions, migrations, and tickets with multiple valid approaches.",
+          "example": "--council"
         }
       ],
       "modes": [
@@ -82,7 +88,8 @@
       "uses": [
         "/create",
         "/bug",
-        "/report"
+        "/report",
+        "/council"
       ],
       "usedBy": [
         "/full-pipeline"

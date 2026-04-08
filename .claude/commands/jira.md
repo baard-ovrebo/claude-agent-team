@@ -16,6 +16,7 @@ You are the **Jira Ticket Orchestrator** — a senior technical lead who takes a
 - If `$ARGUMENTS` starts with `resume` (e.g., `resume FO-2847`) → Go to **RESUME MODE** (below)
 - If `$ARGUMENTS` is a ticket key followed by a quoted message (e.g., `FO-2847 "Review feedback to address"`) → Go to **REVIEW FEEDBACK MODE** (below)
 - If `$ARGUMENTS` contains `--add-context` → Extract the ticket key and the context string, then go to **PHASE 1** with EXTRA_CONTEXT set
+- If `$ARGUMENTS` contains `--council` → Extract the ticket key, set COUNCIL_REQUESTED=true, then go to **PHASE 1** (council will be invoked during planning)
 - If `$ARGUMENTS` contains `--autonomous` → Extract the ticket key, then go to **AUTONOMOUS MODE** (below)
 - If `$ARGUMENTS` is a ticket key like `FO-2847` → Go to **PHASE 1** (single ticket mode)
 
@@ -1642,6 +1643,72 @@ Use the Explore agent or search tools to find the relevant code in the project p
 - Identify the specific files that need modification
 - Note which project/path each file belongs to
 
+### Step 1.7b — Council Consultation (if applicable)
+
+**This step runs if:**
+- The user passed `--council` flag (COUNCIL_REQUESTED=true), OR
+- The agent determines the ticket would benefit from multi-model consultation
+
+**When should the agent RECOMMEND consulting the council (even without --council)?**
+
+Evaluate these criteria after analyzing the ticket:
+
+| Criterion | Triggers Council Recommendation |
+|---|---|
+| **Architecture decision** | Ticket involves choosing between fundamentally different approaches (e.g., REST vs GraphQL, monolith vs microservice, SQL vs NoSQL) |
+| **Migration/rewrite** | Ticket involves migrating from one technology to another |
+| **Multiple valid approaches** | You can think of 3+ legitimate ways to solve this, each with different trade-offs |
+| **Performance-critical** | Ticket involves optimization where wrong choices are expensive to reverse |
+| **Cross-system impact** | Changes affect 3+ repositories or services |
+| **Ambiguous requirements** | Description is clear enough to proceed but the HOW is genuinely debatable |
+
+**Do NOT recommend council for:**
+- Simple bug fixes with obvious root causes
+- UI tweaks, text changes, styling fixes
+- Well-defined CRUD operations
+- Tickets where only one reasonable approach exists
+
+**If agent recommends council (not forced by flag):**
+
+Ask the user:
+> "This ticket involves {reason — e.g., 'an architecture decision between event-driven and synchronous processing'}. I'd recommend consulting the LLM Council for multiple perspectives before committing to an approach. This costs ~${tier_cost} in API calls."
+
+Options:
+1. **Consult the council** — Get perspectives from ChatGPT + Gemini before deciding
+2. **Skip council** — Proceed with my recommendation only
+3. **Consult with pro tier** — Use higher-capability models for this decision
+
+**If council is invoked (via flag or recommendation):**
+
+```
+[Jira] Consulting the LLM Council on approach for {KEY}...
+```
+
+Run the council query with the ticket context:
+
+```
+/council "How should we implement Jira ticket {KEY}: {summary}?
+
+TICKET DESCRIPTION:
+{full description}
+
+COMMENTS:
+{relevant comments}
+
+PROJECT CONTEXT:
+{stack profile, affected files, current architecture}
+
+CLASSIFICATION: {scope}
+
+What is the best implementation approach? Consider: architecture patterns, performance, maintainability, testing strategy, and potential risks."
+{add --tier pro if user chose pro, otherwise use default tier}
+```
+
+After the council returns its synthesis:
+- Include the council's recommendation in the plan presentation
+- Note areas of consensus and disagreement
+- Use the council's recommendation as the **suggested approach** (but the user still approves)
+
 ### Step 1.8 — Present Analysis & Plan
 
 Present your analysis and plan to the user using `AskUserQuestion`:
@@ -1653,8 +1720,14 @@ Present your analysis and plan to the user using `AskUserQuestion`:
 > **Requires Design:** {yes/no}
 > **Affected Files:** {list of key files found, grouped by project}
 >
+> {IF COUNCIL WAS CONSULTED:}
+> **Council Recommendation:** {synthesized recommendation from council}
+> **Council Consensus:** {areas where all models agreed}
+> **Council Disagreements:** {areas of divergence, if any}
+> **Council Confidence:** {HIGH/MEDIUM/LOW}
+>
 > **Suggested Approach:**
-> {your technical plan, using the correct language/framework terminology}
+> {your technical plan — if council was consulted, this incorporates the council's recommendation}
 >
 > How would you like to proceed?"
 
@@ -1662,6 +1735,8 @@ Options:
 1. **Proceed** — Start working on it with this plan
 2. **Modify Plan** — I want to adjust the approach
 3. **Just Analyze** — Don't implement, just give me the analysis
+{IF COUNCIL WAS NOT CONSULTED AND TICKET IS COMPLEX:}
+4. **Consult council first** — Get more perspectives before deciding
 
 If the user says "Proceed", continue to **Step 1.9** (Git Branching) before starting implementation.
 

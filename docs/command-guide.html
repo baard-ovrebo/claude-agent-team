@@ -212,6 +212,7 @@ JIRA_API_TOKEN=your-api-token</pre>
 /jira FO-2847 "Reviewer says the date format is wrong and missing validation"
 /jira FO-2847 --add-context "Use ISO 8601 format, check DateUtils in shared/utils"
 /jira FO-2847 "Fix date format" --add-context "Must use existing DateUtils"
+/jira FO-2847 --council
 /jira FO-2847 --autonomous
 /jira sprint --autonomous</pre>
 <details><summary>Flags</summary><div>
@@ -219,6 +220,7 @@ JIRA_API_TOKEN=your-api-token</pre>
 <thead><tr><th>Flag</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>--add-context "text"</code></td><td><strong>High-priority developer guidance</strong> that supplements the ticket description. Passed to ALL implementation agents as a top-level instruction. Takes precedence over ticket description when conflicting. Appears in ticket summary, Jira comment, and final report. Can combine with review feedback mode.</td></tr>
+<tr><td><code>--council</code></td><td><strong>Consult the LLM Council</strong> before committing to an approach. Sends ticket details to ChatGPT + Gemini, synthesizes perspectives. Also auto-recommended for architecture decisions, migrations, and tickets with multiple valid approaches. Can combine with any mode.</td></tr>
 <tr><td><code>--autonomous</code></td><td><strong>Fully autonomous mode.</strong> Works on the ticket with ZERO user interaction. Evaluates 5 clarity criteria &mdash; if any fail, the ticket is SKIPPED (not asked about). When clear: auto-transitions to In Progress, auto-creates branch (<code>bugfix/FO-xxx</code>, <code>feature/FO-xxx</code>, <code>hotfix/FO-xxx</code> based on issue type), implements without approval gates, runs code analysis + verification, generates a markdown report. <strong>All changes LOCAL ONLY</strong> &mdash; no Jira comments, no uploads, no remote pushes. Works with <code>sprint</code> mode to batch-process all tickets.</td></tr>
 </tbody></table>
 </div></details>
@@ -292,7 +294,7 @@ JIRA_API_TOKEN=your-api-token</pre>
 </ol>
 </div></details>
 <p><strong>Output:</strong> <code>reports/jira-{KEY}-report.html</code> or <code>reports/jira-{KEY}-review-fix-report.html</code></p>
-<p><strong>Uses:</strong></p><div class="uses"><a href="#jam">/jam</a><a href="#jira-watch">/jira watch</a><a href="#code-analysis">/code-analysis</a><a href="#verify">/verify</a><a href="#">Paper MCP</a></div>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#jam">/jam</a><a href="#jira-watch">/jira watch</a><a href="#code-analysis">/code-analysis</a><a href="#verify">/verify</a><a href="#council">/council</a><a href="#">Paper MCP</a></div>
 <p><strong>Requires:</strong> <code>.env</code> with Jira credentials</p>
 </div>
 
