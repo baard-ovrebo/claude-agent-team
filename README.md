@@ -28,6 +28,7 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | **Documentation Lead** | Compiles HTML reports |
 | **Merge Conflict Resolver** | Analyzes and resolves Git conflicts |
 | **Onboarding Engineer** | Analyzes repos and sets up dev environments |
+| **Council Chair** | Consults ChatGPT + Gemini for multi-model decisions |
 
 ## Commands
 
@@ -45,9 +46,11 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 ### Universal (work in any project)
 | Command | Description |
 |---------|-------------|
-| `/create "description"` | Context-aware feature creator: detects project type, designs in Paper, generates HTML plan, gets approval, implements, verifies with Playwright |
+| `/create "description"` | Context-aware feature creator: detects project type, designs in Paper, generates HTML plan, gets approval, implements, verifies with Playwright. Supports `--council` for multi-model consultation |
 | `/bug "description"` | Context-aware bug fixer: analyzes screenshots, diagnoses root cause, fixes, verifies with Playwright |
-| `/changelog` | Reads reports from `/create` and `/bug`, generates beautiful HTML changelog, moves to processed |
+| `/changelog` | Reads reports from `/create` and `/bug`, generates project-themed HTML changelog (adapts to GAME/APPLICATION/SAAS/API/MOBILE), moves to processed |
+| `/council "question"` | **LLM Council** — consults ChatGPT + Gemini in parallel, Claude synthesizes unified recommendation. Modes: consult, `--code`, `--review`, `--debate`. Tiers: budget/balanced/pro |
+| `/council --config` | Set up API keys for ChatGPT and Gemini |
 | `/create-project "description"` | Full project creator: questions → Paper design → HTML plan → build with full agent team → test → verify → deliver |
 | `/report` | Analyze all branch changes, generate Jira-ready HTML report with QA testing instructions, optional upload to Jira ticket |
 | `/report FO-2847` | Same + auto-upload report and screenshots to the specified Jira ticket |
@@ -148,6 +151,17 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 - **Lock file regeneration** — auto-regenerates package-lock.json, yarn.lock, poetry.lock, go.sum after merge
 - **Multi-project sync** — syncs across frontend + backend repos simultaneously
 
+### LLM Council — Multi-Model Decisions
+- **Parallel queries** — consults ChatGPT (OpenAI) and Gemini (Google AI) simultaneously via their APIs
+- **Anchoring bias prevention** — Claude forms its own opinion FIRST before reading other models' responses
+- **Smart auto-recommendation** — `/jira` and `/create` automatically suggest council consultation for architecture decisions, migrations, performance-critical features, and ambiguous tickets
+- **4 modes** — consult (default), `--code` (implementation comparison), `--review` (multi-model code review), `--debate` (adversarial moderation)
+- **3 tiers** — budget (gpt-4o-mini + gemini-flash-lite), balanced (gpt-4o + gemini-2.5-flash), pro (o3-mini + gemini-2.5-pro)
+- **Cost transparency** — tracks token usage per model, shows estimated cost in each report
+- **Graceful degradation** — continues with available responses if one model fails or times out
+- **Confidence ratings** — HIGH when all models agree, LOW when fundamental disagreement exists
+- **Synthesis** — identifies consensus, divergent opinions, unique insights per model, blind spots
+
 ### Reports & Screenshots
 - All HTML reports include a **clickable screenshot lightbox** — click any image to view full-size
 - Screenshots embedded as **base64** — reports are self-contained, work offline, sharable via email
@@ -205,10 +219,11 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | `/jam` | JAM MCP server |
 | `/create`, `/new-feature` (design phase) | Paper MCP server (optional — skips design if unavailable) |
 | `/verify` | Playwright + running application + `.claude/project-profile.json` (built on first run) |
+| `/council` | `.claude/council.env` with OpenAI + Google AI API keys (run `/council --config` to set up) |
 | `/unit-test`, `/deps`, `/dev-team` | Nothing extra — works standalone |
 | `/create`, `/bug`, `/changelog` | Nothing extra — works standalone (ProjectType in .env is optional) |
 | `/git sync` | Git installed (works standalone) |
-| `/repo-setup` | `gh` CLI for org scan, otherwise standalone |
+| `/repo-setup`, `/impact-scan` | `gh` CLI for org scan, otherwise standalone |
 | `/docker-*` | Docker Desktop |
 | `/playwright-test` | Node.js + Playwright |
 
