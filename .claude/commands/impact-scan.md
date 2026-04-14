@@ -1127,6 +1127,75 @@ Before analyzing changes, read existing code to understand the architecture and 
 [Impact Scan] {what is happening now}
 ```
 
+
+### MANDATORY — CODE QUALITY ENFORCEMENT (Rule Z — non-negotiable)
+
+All code written by this command or its sub-agents MUST meet production quality standards. "It works" is NOT the acceptance bar. This rule applies at the same level as "never edit without dispatching" and "never force-push to main".
+
+**The four-layer enforcement:**
+
+1. **Every sub-agent Task prompt MUST include the [QUALITY BAR — NON-NEGOTIABLE] block below**
+2. **Every agent report MUST include a ## Quality Audit section** — if missing, re-dispatch the agent
+3. **If the audit reveals violations** (allocations in loops, missing cleanup, N+1 queries, wrong data structures) — send the agent back to fix them BEFORE marking the task done
+4. **The final summary to the user MUST surface the Quality Audit findings** so the user sees that optimization was verified
+
+### [QUALITY BAR — NON-NEGOTIABLE] block to inject into EVERY code-writing sub-agent prompt:
+
+```
+[QUALITY BAR — NON-NEGOTIABLE]
+Your code will be REJECTED if it does not meet these standards:
+
+PERFORMANCE FIRST:
+- Zero allocations in hot paths (loops, render functions, frame handlers, request handlers)
+- Proper data structures (Set/Map for O(1) lookups, not linear scans with find/includes)
+- Batched operations (no N+1 queries, batch DB writes, batch API calls, batch state updates)
+- Early returns and lazy evaluation — don't do work the caller doesn't need
+- No synchronous I/O in request handlers or render paths
+- No unnecessary re-computation of values that don't change
+
+RESOURCE EFFICIENCY:
+- Must run well on 8 GB RAM / integrated GPU / slow disk / 3G network
+- All resources cleaned up (listeners, subscriptions, timers, streams, DB connections)
+- No unbounded caches or buffers — evict or cap everything
+- GPU awareness for frontend — avoid layout thrashing, minimize re-renders, batch DOM ops
+- Network efficiency — compress, paginate, cache, use field selection
+
+CODE STRUCTURE:
+- Single responsibility per function — if it does 2+ things, split it
+- No duplicated logic — if the same pattern appears 3+ times, extract a utility
+- Error handling at boundaries (API edges, user input, external calls)
+- Reuse existing utilities before writing new ones
+- No dead code, no commented-out blocks
+
+WATCH OUT for AI-generated 'works but wasteful' patterns:
+- Rebuilding entire lists when one item changed
+- Loading all data then filtering in memory (filter in SQL/API instead)
+- setState/update in a loop instead of batching
+- Creating new functions/objects inside render
+- JSON.parse(JSON.stringify(obj)) for deep clone
+- Running find/includes on the same array repeatedly in a hot path
+- Fetching data the backend already has cached
+- Validating the same thing in 3 layers
+
+BEFORE REPORTING DONE, include a QUALITY AUDIT section in your output:
+
+## Quality Audit
+- **Hot paths:** Which loops/handlers/renders did you identify as hot? How did you keep them clean?
+- **Data structures:** Why Set vs Array vs Map? Any O(1) lookups required?
+- **Cleanup:** What subscriptions/timers/listeners/connections are you releasing and where?
+- **Caching:** What did you memoize/cache? What did you explicitly NOT cache and why?
+- **Batching:** What operations did you batch? Any N+1 patterns you avoided?
+- **Memory at scale:** Rough estimate of memory usage at 10x and 100x current load
+- **Code I avoided writing:** What shortcut/lazy option did you reject in favor of the optimized one?
+
+If this section is missing from your report, your work is INCOMPLETE and will be sent back.
+```
+
+**Orchestrator responsibility:** After each sub-agent returns, check for the Quality Audit section. If missing, dispatch again with the instruction to add it. If the audit reveals violations, dispatch again to fix them.
+
+**User-facing responsibility:** In the final summary, surface the key Quality Audit findings so the user knows optimization was actually verified, not skipped.
+
+
 ## Rules
 
 - **Scan ALL repos, not just the obvious ones** — a change to a shared library affects everything that imports it

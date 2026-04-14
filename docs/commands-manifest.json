@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "commandCount": 30,
-  "lastUpdated": "2026-04-08",
+  "commandCount": 31,
+  "lastUpdated": "2026-04-14",
   "commands": [
     {
       "name": "/jira",
@@ -1465,6 +1465,90 @@
         "Google AI key (for Gemini)",
         ".claude/council.env"
       ]
+    },
+    {
+      "name": "/quality-scan",
+      "category": "Code Quality",
+      "categoryColor": "#ef4444",
+      "description": "Code quality scanner \u2014 finds AI-generated \"works but wasteful\" patterns: allocations in hot paths, N+1 queries, memory leaks, linear scans, missing cleanup. Grades the codebase A-F.",
+      "usage": "/quality-scan [path] [--group] [--area feature] [--severity level] [--fix] [--create-roadmap]",
+      "arguments": [
+        {
+          "name": "target_path",
+          "type": "path",
+          "required": false,
+          "description": "Project path to scan (default: current directory)",
+          "examples": [
+            "D:/Projects/my-app"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--group",
+          "type": "boolean",
+          "description": "Scan all projects in the project map / INDEX.md",
+          "example": "--group"
+        },
+        {
+          "flag": "--area",
+          "type": "string",
+          "description": "Scope scan to a feature area keyword",
+          "example": "--area \"invoice export\""
+        },
+        {
+          "flag": "--severity",
+          "type": "string",
+          "description": "Filter: critical, major, minor, all",
+          "example": "--severity critical"
+        },
+        {
+          "flag": "--fix",
+          "type": "boolean",
+          "description": "Apply fixes instead of just reporting",
+          "example": "--fix"
+        },
+        {
+          "flag": "--create-roadmap",
+          "type": "boolean",
+          "description": "Create Jira tickets for critical + major findings",
+          "example": "--create-roadmap"
+        }
+      ],
+      "modes": [
+        {
+          "name": "single_project",
+          "trigger": "default or {path}",
+          "description": "Scan one project"
+        },
+        {
+          "name": "group",
+          "trigger": "--group",
+          "description": "Scan all linked projects + cross-project issues"
+        },
+        {
+          "name": "area",
+          "trigger": "--area {feature}",
+          "description": "Scoped scan for a specific feature area"
+        },
+        {
+          "name": "fix",
+          "trigger": "--fix",
+          "description": "Scan + apply fixes"
+        }
+      ],
+      "output": [
+        "reports/quality-scan-report.html",
+        "reports/quality-findings.json"
+      ],
+      "uses": [
+        "/jira"
+      ],
+      "usedBy": [
+        "/dev-team",
+        "/full-pipeline"
+      ],
+      "requires": []
     }
   ]
 }
