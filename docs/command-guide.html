@@ -63,9 +63,9 @@ li{margin-bottom:4px;}
 
 <nav class="sidebar" id="sidebar">
   <h2>Command Reference</h2>
+  <input type="text" class="search" id="search" placeholder="Filter commands..." oninput="filterNav()">
   <div class="cat" style="color:var(--red);">Enforcement</div>
   <a href="#rule-z" data-cmd="rule-z quality enforcement">Rule Z — Quality</a>
-  <input type="text" class="search" id="search" placeholder="Filter commands..." oninput="filterNav()">
   <div class="cat" style="color:var(--amber);">Project Management</div>
   <a href="#jira" data-cmd="jira">/jira {KEY}</a>
   <a href="#jira-sprint" data-cmd="jira sprint">/jira sprint</a>
