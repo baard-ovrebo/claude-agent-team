@@ -164,8 +164,9 @@ Every command that writes code (`/create`, `/bug`, `/jira`, `/new-feature`, `/cr
 1. **Mandate** (prompt text) — performance, resource efficiency, and code structure standards explained up-front
 2. **Hard Rule** (orchestrator level) — "Rule Z" at same enforcement level as "never force-push to main"
 3. **Agent-level `[QUALITY BAR — NON-NEGOTIABLE]` block** — injected into every sub-agent prompt so the agents themselves see *"your code will be REJECTED if..."*
-4. **Runtime hooks** (optional but recommended) — see [`hooks/`](hooks/) for three Python hooks that enforce the rule at runtime:
+4. **Runtime hooks** (optional but recommended) — see [`hooks/`](hooks/) for four Python hooks that enforce the rule at runtime:
    - `quality-audit-check.py` — blocks sub-agent completion if `## Quality Audit` section is missing from the report
+   - `quality-audit-verify.py` — **Rule Z v2** — parses the YAML audit block and cross-checks each claim (memoized components, useCallback handlers, hoisted style consts, Set/Map uses, cleanup) against the actual code. Fabricated claims fail and block.
    - `quality-reminder.py` — prepends Rule Z reminder to every user prompt so it stays in short-term context
    - `quality-gate-check.py` — calls the external Quality Gate service (see layer 5) for linter + fresh reviewer verdict
 

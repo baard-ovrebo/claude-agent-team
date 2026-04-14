@@ -658,39 +658,50 @@ RESOURCE EFFICIENCY:
 CODE STRUCTURE:
 - Single responsibility per function — if it does 2+ things, split it
 - No duplicated logic — if the same pattern appears 3+ times, extract a utility
-CODE REUSE (read this FIRST):
-- Before writing ANY helper/utility/constant/type, grep the project for existing ones. If a similar utility exists, USE IT — do not duplicate.
-- Before writing a new component, check if an existing component can be extended with props.
-- If you write the same logic twice, stop and extract a shared utility.
-- Shared types/interfaces/models live in ONE place (types/, models/, shared/) — import, don't redefine.
-- Constants and magic values go in a central location — no inline magic numbers or duplicated string literals.
-- The project should have ONE way to do each thing. If you notice two ways, flag it in the Quality Audit.
+- Before writing ANY helper/utility/type, grep the project for an existing one
+- Shared types/interfaces/models live in ONE place — import, don't redefine
 - Error handling at boundaries (API edges, user input, external calls)
-- Reuse existing utilities before writing new ones
 - No dead code, no commented-out blocks
 
-WATCH OUT for AI-generated 'works but wasteful' patterns:
-- Rebuilding entire lists when one item changed
-- Loading all data then filtering in memory (filter in SQL/API instead)
-- setState/update in a loop instead of batching
-- Creating new functions/objects inside render
-- JSON.parse(JSON.stringify(obj)) for deep clone
-- Running find/includes on the same array repeatedly in a hot path
-- Fetching data the backend already has cached
-- Validating the same thing in 3 layers
+WATCH OUT for AI-generated 'works but wasteful' patterns (each line: problem → fix):
+- Inline `style={{...}}` in JSX → hoist to a module-scope const. Inline objects allocate every render and break React.memo.
+- Inline `onClick={() => ...}` in JSX → use useCallback bound to stable identifiers. Inline arrows break React.memo.
+- Missing React.memo on list-row components → wrap rows in React.memo with stable handler props so unchanged rows don't re-render.
+- Missing useMemo on derived data used by many children → memoize it once, not per consumer.
+- `array.find(...)` / `array.includes(...)` in a render or loop → build a Set/Map once and use O(1) lookup.
+- Rebuilding entire lists when one item changed → update one element with referential stability so React.memo can skip unchanged rows.
+- setState/update in a loop → batch into one setState(fn) call.
+- JSON.parse(JSON.stringify(obj)) for deep clone → structuredClone or targeted spreads.
+- Loading all data then filtering in memory → filter server-side via query string / SQL.
+- Fetching data the backend already has cached → reuse the shared API client's cache.
+- Validating the same thing in 3 layers → validate at the boundary once, trust internally.
 
-BEFORE REPORTING DONE, include a QUALITY AUDIT section in your output:
+BEFORE REPORTING DONE, include a MACHINE-CHECKABLE Quality Audit section in your output. Start with a structured YAML block, then a brief prose summary below it:
 
 ## Quality Audit
-- **Hot paths:** Which loops/handlers/renders did you identify as hot? How did you keep them clean?
-- **Data structures:** Why Set vs Array vs Map? Any O(1) lookups required?
-- **Cleanup:** What subscriptions/timers/listeners/connections are you releasing and where?
-- **Caching:** What did you memoize/cache? What did you explicitly NOT cache and why?
-- **Batching:** What operations did you batch? Any N+1 patterns you avoided?
-- **Memory at scale:** Rough estimate of memory usage at 10x and 100x current load
-- **Code I avoided writing:** What shortcut/lazy option did you reject in favor of the optimized one?
 
-If this section is missing from your report, your work is INCOMPLETE and will be sent back.
+```yaml
+# Every claim in this block will be cross-checked against the code.
+# Lying or vagueness here = re-dispatch.
+memoized_components: []       # e.g. [TaskRow, StatusBadge]
+usecallback_handlers: []      # handler names wrapped in useCallback
+usememo_derivations: []       # values wrapped in useMemo (name them)
+hoisted_style_constants: []   # module-scope style object names
+set_uses:                     # Sets used in state or lookup
+  - { name: "", purpose: "" }
+map_uses:                     # Maps used for O(1) lookup
+  - { name: "", purpose: "" }
+cleanup_registered:           # every resource released and where
+  - { type: "", where: "" }   # e.g. { type: clearInterval, where: "TaskDashboard useEffect" }
+batched_operations: []        # places N+1 or batched updates were avoided
+shortcuts_rejected: []        # lazy patterns you considered but didn't ship
+memory_at_10x: ""             # estimated memory at 10x current load
+memory_at_100x: ""            # estimated memory at 100x current load
+```
+
+Then write a 3-5 sentence prose summary explaining the key design choices.
+
+If the YAML block is missing, malformed, or contains empty required fields, your work is INCOMPLETE and will be sent back. The Quality Gate service verifies each claim against the actual code — fabricated claims will fail verification.
 ```
 
 **Orchestrator responsibility:** After each sub-agent returns, check for the Quality Audit section. If missing, dispatch again with the instruction to add it. If the audit reveals violations, dispatch again to fix them.

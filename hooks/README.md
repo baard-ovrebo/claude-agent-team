@@ -14,6 +14,26 @@ Runs before every user message. Prepends a short Rule Z reminder to the prompt c
 
 **Keeps the rule top-of-mind** in long conversations where earlier system prompts may be deprioritized.
 
+### `quality-audit-verify.py` — SubagentStop hook (Rule Z v2)
+Runs AFTER `quality-audit-check.py` (which checks the section exists). This hook **parses the YAML Quality Audit block** the agent emitted and cross-checks each claim against the actual code. If the agent claimed `memoized_components: [TaskRow]` but `TaskRow` isn't wrapped in `React.memo`, or claimed `hoisted_style_constants: [ROW_STYLE]` but 15 inline `style={{...}}` literals still exist, the hook **blocks the sub-agent completion** with a list of unverified claims.
+
+Why this exists: before Rule Z v2, the Quality Audit was free-form prose. Agents could write a convincing audit that didn't match the code. v2 requires structured YAML claims; this hook makes them load-bearing — fabricated claims fail verification.
+
+Verification checks (all via grep on the changed code):
+- `memoized_components` → `React.memo(Name)` or `memo(Name)` exists
+- `usecallback_handlers` → `const name = useCallback(` exists
+- `usememo_derivations` → `const name = useMemo(` exists
+- `hoisted_style_constants` → `const NAME = ` at module scope
+- `set_uses` → at least one `new Set(` when Sets are claimed
+- `map_uses` → at least one `new Map(` when Maps are claimed
+- `cleanup_registered` → at least one `clearInterval/clearTimeout/abort/removeEventListener/unsubscribe` when cleanup is claimed
+- **Contradictions** — if the agent claimed hoisted style constants but the code still has 3+ inline `style={{...}}`, that's a block. Same for useCallback handlers when 3+ inline arrows still exist.
+
+Environment variables:
+- `QA_VERIFY_STRICT` — if `true`, "missing evidence" warnings also block (default `false` — only clear contradictions block)
+
+The hook is intentionally lenient on ambiguity. A claim without evidence prints a stderr warning but doesn't block. A claim that contradicts the shipped code (e.g. claiming `React.memo` but none exists) does block.
+
 ### `quality-gate-check.py` — SubagentStop hook (needs quality-gate service)
 Runs AFTER `quality-audit-check.py`. Pushes the sub-agent's code changes to the **Quality Gate service** (`quality-gate/`) which runs linter + fresh Claude reviewer + optional human review queue. Uses the verdict to allow or block the sub-agent turn:
 
@@ -46,6 +66,10 @@ Add to your `~/.claude/settings.json` (global) or `.claude/settings.json` (per-p
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/quality-audit-check.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/quality-audit-verify.py\""
           },
           {
             "type": "command",
