@@ -83,6 +83,7 @@ li{margin-bottom:4px;}
   <a href="#code-analysis" data-cmd="code-analysis">/code-analysis</a>
   <div class="cat" style="color:var(--red);">Code Quality</div>
   <a href="#dev-team" data-cmd="dev-team">/dev-team</a>
+  <a href="#quality-scan" data-cmd="quality-scan">/quality-scan</a>
   <a href="#security-audit" data-cmd="security-audit">/security-audit</a>
   <a href="#quality-audit" data-cmd="quality-audit">/quality-audit</a>
   <a href="#fix-all" data-cmd="fix-all">/fix-all</a>
@@ -115,7 +116,7 @@ li{margin-bottom:4px;}
   <p>28 slash commands that orchestrate specialized AI agents for software development</p>
   <p style="font-size:12px;color:var(--light);margin-top:4px;">Last updated: 2026-03-24</p>
   <div class="stats">
-    <div class="stat"><div class="v">30</div><div class="l">Commands</div></div>
+    <div class="stat"><div class="v">31</div><div class="l">Commands</div></div>
     <div class="stat"><div class="v">12</div><div class="l">Agent Roles</div></div>
     <div class="stat"><div class="v">8</div><div class="l">Categories</div></div>
     <div class="stat"><div class="v">9</div><div class="l">Language Stacks</div></div>
@@ -614,6 +615,39 @@ JIRA_API_TOKEN=your-api-token</pre>
 <h3><code>/test-all</code> <span class="badge b-red">Code Quality</span></h3>
 <p class="desc">Writes unit tests for every fix. Edge cases + security regression tests. Runs all tests, iterates until 100% pass.</p>
 <p><strong>Output:</strong> <code>reports/test-report.md</code></p>
+</div>
+
+<div class="cmd-card" style="border-left-color:var(--red);" id="quality-scan">
+<h3><code>/quality-scan</code> <span class="badge b-red">Code Quality</span> <span class="badge" style="background:#fef2f2;color:#ef4444;">Rule Z</span></h3>
+<p class="desc">Hunts down AI-generated <em>"works but wasteful"</em> code. Finds allocations in hot paths, N+1 queries, linear scans on lookups, memory leaks, GPU waste, unbounded caches, wrong data structures. Grades the codebase A&ndash;F.</p>
+<pre>/quality-scan                          # Current project
+/quality-scan D:\Projects\my-app       # Specific path
+/quality-scan --group                  # All linked projects + cross-project issues
+/quality-scan --area "invoice export"  # Scoped to feature area
+/quality-scan --severity critical      # Only critical findings
+/quality-scan --fix                    # Apply fixes
+/quality-scan --create-roadmap         # Create Jira tickets</pre>
+<details><summary>What It Finds</summary><div>
+<ul>
+<li><strong>Performance:</strong> allocations in hot paths, N+1 queries, linear scans, missing pagination, sync I/O in handlers</li>
+<li><strong>Resource management:</strong> memory leaks, missing cleanup, GPU waste, unbounded caches</li>
+<li><strong>Code structure:</strong> oversized functions, duplication, dead code, wrong data structures</li>
+<li><strong>Scalability:</strong> patterns that break at 10x data, hardcoded limits, missing caching</li>
+<li><strong>AI-specific:</strong> <code>JSON.parse/stringify</code> clones, filter-in-memory-vs-SQL, render-time allocation, <code>setState</code> in loops, repeated <code>find/includes</code>, fetching cached data, 3-layer validation</li>
+</ul>
+</div></details>
+<details><summary>Cross-Project Analysis (--group)</summary><div>
+<ul>
+<li>Frontend re-fetching data the backend already caches</li>
+<li>Duplicate validation in frontend AND backend</li>
+<li>API endpoints returning 30 fields when frontend uses 4</li>
+<li>Missing shared types between frontend and backend</li>
+<li>Chatty APIs (5+ calls for one screen that could be 1 composite)</li>
+</ul>
+</div></details>
+<p><strong>Grade scale:</strong> A (&lt;1 finding per 1000 LOC), B (&lt;5), C (&lt;15), D (&lt;30), F (30+)</p>
+<p><strong>Output:</strong> <code>reports/quality-scan-report.html</code> (auto-opens) + <code>reports/quality-findings.json</code></p>
+<p><strong>Uses:</strong></p><div class="uses"><a href="#jira">/jira</a> <span style="font-size:11px;color:var(--light);">to create roadmap tickets</span></div>
 </div>
 
 <div class="cmd-card" style="border-left-color:var(--red);" id="master-report">

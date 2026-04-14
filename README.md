@@ -1,10 +1,12 @@
 # Claude Agent Team
 
-An AI development team built on [Claude Code](https://claude.ai/claude-code) — 30 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
+An AI development team built on [Claude Code](https://claude.ai/claude-code) — 31 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
 
-No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines.
+**Enforces Rule Z — Code Quality** at four layers (mandate + hard rule + agent-level quality bar + runtime hooks) so AI-generated code is production-optimized, not just working. See [Rule Z section](#rule-z--code-quality-enforcement-applies-to-all-code-writing-commands) below.
 
-*Last updated: 2026-04-08*
+No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines (plus two optional Python hooks for runtime enforcement).
+
+*Last updated: 2026-04-14*
 
 > **[Full Command Reference Guide](https://baard-ovrebo.github.io/claude-agent-team/command-guide.html)** — comprehensive interactive documentation for every command with usage examples, flags, relationships, and architecture diagrams.
 >
@@ -66,6 +68,8 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 | Command | Description |
 |---------|-------------|
 | `/dev-team` | Iterative: scan → fix → test → re-scan until zero findings |
+| `/quality-scan` | **Rule Z scanner** — finds AI "works but wasteful" patterns: allocations in hot paths, N+1 queries, linear scans, memory leaks, GPU waste. Grades A–F |
+| `/quality-scan --group` | Scan all linked projects + cross-project issues (frontend re-fetching, duplicate validation, over-fetching) |
 | `/security-audit` | Standalone OWASP Top 10 scan |
 | `/quality-audit` | Standalone code quality scan |
 | `/fix-all` | Fix all findings from audit reports |
@@ -150,6 +154,25 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 - **AI conflict resolution** — per-file analysis with confidence levels (high/medium/needs-human-review)
 - **Lock file regeneration** — auto-regenerates package-lock.json, yarn.lock, poetry.lock, go.sum after merge
 - **Multi-project sync** — syncs across frontend + backend repos simultaneously
+
+### Rule Z — Code Quality Enforcement (applies to ALL code-writing commands)
+
+**AI-generated code has a documented tendency to produce "works but wasteful" implementations — rebuilding entire lists when one item changed, loading all data then filtering in memory, setState in loops, creating functions inside render, fetching data the backend already cached.** Rule Z prevents this.
+
+Every command that writes code (`/create`, `/bug`, `/jira`, `/new-feature`, `/create-project`, `/fix-all`, `/dev-team`, `/full-pipeline`, `/impact-scan --apply`, `/code-analysis`, `/unit-test`) enforces a **four-layer quality model**:
+
+1. **Mandate** (prompt text) — performance, resource efficiency, and code structure standards explained up-front
+2. **Hard Rule** (orchestrator level) — "Rule Z" at same enforcement level as "never force-push to main"
+3. **Agent-level `[QUALITY BAR — NON-NEGOTIABLE]` block** — injected into every sub-agent prompt so the agents themselves see *"your code will be REJECTED if..."*
+4. **Runtime hooks** (optional but recommended) — see [`hooks/`](hooks/) for two Python hooks that enforce the rule at runtime:
+   - `quality-audit-check.py` — blocks sub-agent completion if `## Quality Audit` section is missing from the report
+   - `quality-reminder.py` — prepends Rule Z reminder to every user prompt so it stays in short-term context
+
+Every agent report MUST include a `## Quality Audit` section covering: hot paths, data structures, cleanup, caching, batching, memory at 10x/100x scale, and what shortcuts were rejected. **The orchestrator is instructed to reject reports missing this section and re-dispatch.**
+
+**`/quality-scan`** (command) — hunts down existing Rule Z violations across a project or linked group. Finds allocations in hot paths, N+1 queries, linear scans, memory leaks, GPU waste, wrong data structures. Grades the codebase A–F. Can auto-fix or create Jira tickets for findings. Includes cross-project analysis in `--group` mode (frontend re-fetching backend-cached data, duplicate validation, over-fetching, chatty APIs).
+
+> **Install the runtime hooks:** See [`hooks/README.md`](hooks/README.md) for settings.json configuration. Without the hooks, enforcement relies on the LLM following its prompt (strong but soft). With the hooks, the Quality Audit is enforced at runtime — the AI cannot skip it.
 
 ### LLM Council — Multi-Model Decisions
 - **Parallel queries** — consults ChatGPT (OpenAI) and Gemini (Google AI) simultaneously via their APIs
