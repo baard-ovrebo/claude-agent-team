@@ -63,6 +63,8 @@ li{margin-bottom:4px;}
 
 <nav class="sidebar" id="sidebar">
   <h2>Command Reference</h2>
+  <div class="cat" style="color:var(--red);">Enforcement</div>
+  <a href="#rule-z" data-cmd="rule-z quality enforcement">Rule Z — Quality</a>
   <input type="text" class="search" id="search" placeholder="Filter commands..." oninput="filterNav()">
   <div class="cat" style="color:var(--amber);">Project Management</div>
   <a href="#jira" data-cmd="jira">/jira {KEY}</a>
@@ -145,6 +147,108 @@ ProjectType=APPLICATION
 JIRA_BASE_URL=https://your-instance.atlassian.net
 JIRA_EMAIL=your-email@company.com
 JIRA_API_TOKEN=your-api-token</pre>
+</div>
+
+<!-- RULE Z + QUALITY GATE -->
+<h2 class="section" id="rule-z" style="color:var(--red);">Rule Z &mdash; Code Quality Enforcement</h2>
+
+<div class="cmd-card" style="border-left-color:var(--red);">
+<h3>Five Layers of Enforcement</h3>
+<p class="desc">AI-generated code has a documented tendency to produce <em>"works but wasteful"</em> implementations. Rule Z is the enforcement system that prevents this across ALL code-writing commands (<code>/create</code>, <code>/bug</code>, <code>/jira</code>, <code>/new-feature</code>, <code>/create-project</code>, <code>/fix-all</code>, <code>/dev-team</code>, <code>/full-pipeline</code>, <code>/impact-scan --apply</code>, <code>/code-analysis</code>, <code>/unit-test</code>).</p>
+
+<table>
+<thead><tr><th>Layer</th><th>What</th><th>Location</th></tr></thead>
+<tbody>
+<tr><td><strong>1. Mandate</strong></td><td>Prompt text explaining performance, resource, and code structure standards (zero allocations in hot paths, proper data structures, cleanup, batching, code reuse)</td><td>Every code-writing command file</td></tr>
+<tr><td><strong>2. Hard Rule Z</strong></td><td>Orchestrator-level rule at same weight as "never force-push to main"</td><td>Top of each command's rules section</td></tr>
+<tr><td><strong>3. Quality Bar block</strong></td><td><code>[QUALITY BAR &mdash; NON-NEGOTIABLE]</code> block injected into every sub-agent prompt. The agents themselves see <em>"your code will be REJECTED if..."</em></td><td>Every sub-agent dispatch</td></tr>
+<tr><td><strong>4. Mandatory Quality Audit</strong></td><td>Every agent report must include <code>## Quality Audit</code> covering hot paths, data structures, cleanup, caching, batching, memory at scale, and shortcuts rejected. Orchestrator re-dispatches if missing.</td><td>Every agent response</td></tr>
+<tr><td><strong>5. External Quality Gate</strong></td><td>HTTP service running linter + fresh Claude reviewer + human review queue. Blocks sub-agent turn if verdict is FAIL or HUMAN_REVIEW_REQUIRED.</td><td><code>quality-gate/</code> service</td></tr>
+</tbody></table>
+
+<details><summary>Runtime Hooks (layer 4 + 5 teeth)</summary><div>
+<p>Three Python hooks wire the enforcement into Claude Code at runtime:</p>
+<ul>
+<li><code>hooks/quality-audit-check.py</code> (SubagentStop) &mdash; blocks sub-agent completion if <code>## Quality Audit</code> is missing from the report</li>
+<li><code>hooks/quality-reminder.py</code> (UserPromptSubmit) &mdash; prepends Rule Z reminder to every user prompt so it stays in short-term context</li>
+<li><code>hooks/quality-gate-check.py</code> (SubagentStop) &mdash; calls the Quality Gate service and blocks on FAIL verdict</li>
+</ul>
+<p>Install via <code>~/.claude/settings.json</code> &mdash; see <a href="https://github.com/baard-ovrebo/claude-agent-team/tree/master/hooks"><code>hooks/README.md</code></a>.</p>
+</div></details>
+
+<details><summary>Quality Gate Service (external validator)</summary><div>
+<p>Standalone HTTP service that runs <strong>three independent checks</strong> on every AI code change:</p>
+<ol>
+<li><strong>Linter pass</strong> &mdash; auto-detects language and runs the matching linter:
+<table>
+<thead><tr><th>Language</th><th>Linter</th></tr></thead>
+<tbody>
+<tr><td>JavaScript / TypeScript</td><td>ESLint (via npx)</td></tr>
+<tr><td>Python</td><td>ruff (preferred) / pylint</td></tr>
+<tr><td>Go</td><td>go vet</td></tr>
+<tr><td>Rust</td><td>cargo clippy</td></tr>
+<tr><td>C#</td><td>dotnet format</td></tr>
+<tr><td>Ruby</td><td>rubocop</td></tr>
+<tr><td>PHP</td><td>phpstan</td></tr>
+</tbody></table>
+</li>
+<li><strong>Fresh Claude reviewer</strong> &mdash; spawns an <strong>isolated</strong> Claude instance (via <code>claude -p</code> CLI, with OpenAI/Gemini as fallbacks) that reviews the diff with NO knowledge of the original agent's reasoning. This is the key part: an anchored reviewer in the same conversation would justify the original choices; a fresh reviewer sees them cold and spots what was rationalized.</li>
+<li><strong>Human review queue</strong> &mdash; SQLite-backed queue with web UI at <code>http://127.0.0.1:7733/</code> for items flagged for human approval. Approve / Reject / Defer decisions unblock the agent turn.</li>
+</ol>
+<p><strong>Verdict:</strong> <code>PASS</code>, <code>FAIL</code> (with specific findings), or <code>HUMAN_REVIEW_REQUIRED</code>.</p>
+<p><strong>Install:</strong> <code>cd quality-gate &amp;&amp; docker compose up -d</code></p>
+<p>See <a href="https://github.com/baard-ovrebo/claude-agent-team/tree/master/quality-gate"><code>quality-gate/README.md</code></a> for full setup, API docs, and configuration.</p>
+</div></details>
+
+<details><summary>What the QUALITY BAR block contains</summary><div>
+<pre style="font-size:11px;padding:10px">[QUALITY BAR — NON-NEGOTIABLE]
+Your code will be REJECTED if it does not meet these standards:
+
+PERFORMANCE FIRST:
+- Zero allocations in hot paths (loops, render functions, frame handlers)
+- Proper data structures (Set/Map for O(1) lookups, not linear scans)
+- Batched operations (no N+1 queries, batch DB writes, batch state updates)
+- Early returns and lazy evaluation
+- No synchronous I/O in request handlers or render paths
+
+RESOURCE EFFICIENCY:
+- Must run well on 8 GB RAM / integrated GPU / slow disk / 3G network
+- All resources cleaned up (listeners, subscriptions, timers, connections)
+- No unbounded caches or buffers
+- GPU awareness for frontend — minimize re-renders, batch DOM ops
+
+CODE STRUCTURE:
+- Single responsibility per function
+- No duplicated logic — extract shared utilities
+- Reuse existing utilities before writing new ones
+- Shared types/interfaces/models in ONE place — import, don't redefine
+
+CODE REUSE:
+- Grep project for existing utilities BEFORE writing new ones
+- Extend existing components with props vs creating duplicates
+- Constants/magic values in central location
+- ONE way to do each thing
+
+WATCH OUT for AI "works but wasteful" patterns:
+- Rebuilding entire lists when one item changed
+- Loading all data then filtering in memory (filter in SQL/API)
+- setState in loops, creating functions inside render
+- JSON.parse(JSON.stringify(obj)) for deep clone
+- Repeated find/includes on same array in hot path
+- Fetching data the backend already cached
+- 3-layer validation
+
+BEFORE REPORTING DONE, include ## Quality Audit:
+- Hot paths: what you kept clean and how
+- Data structures: why Set vs Array vs Map
+- Cleanup: subscriptions/timers released
+- Caching: what you memoized and why
+- Batching: N+1 patterns avoided
+- Memory at scale: estimate at 10x and 100x
+- Code I avoided writing: shortcuts rejected</pre>
+</div></details>
+
+<p><strong>Related command:</strong> <a href="#quality-scan"><code>/quality-scan</code></a> &mdash; hunts down existing Rule Z violations in any codebase, grades A&ndash;F.</p>
 </div>
 
 <!-- ARCHITECTURE -->
