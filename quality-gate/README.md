@@ -137,6 +137,9 @@ Environment variables:
 | `GATE_URL` (hook) | `http://127.0.0.1:7733` | Where the hook calls the service |
 | `GATE_TIMEOUT` (hook) | `180` | Total timeout the hook waits for verdict |
 | `GATE_REQUIRE_HUMAN_REVIEW` (hook) | `false` | If `true`, every change requires human approval |
+| `GATE_HUMAN_WAIT` (hook) | `600` | How long to WAIT for the human's decision before blocking (seconds). Default: 10 minutes. |
+| `GATE_HUMAN_POLL_INTERVAL` (hook) | `5` | Poll interval while waiting (seconds) |
+| `GATE_HUMAN_STATUS_EVERY` (hook) | `30` | How often to print "still waiting..." progress to stderr (seconds) |
 
 ## Fresh Reviewer — How It Works
 
@@ -162,9 +165,35 @@ Each item shows:
 - The files affected
 - The agent's Quality Audit claims
 - All findings from the linter and fresh reviewer
-- Buttons to approve, reject, or defer
+- Buttons to **Approve**, **Reject**, or **Defer**
 
-When you decide, the agent's turn in Claude Code unblocks (if polling) or the user can re-run the dispatch.
+### How the agent waits for your decision
+
+When a change requires human review, the `quality-gate-check.py` hook **polls the service and waits** for your decision. The Claude session is paused — the sub-agent cannot complete — until one of these happens:
+
+| Your decision | What the hook does | What the agent sees |
+|---|---|---|
+| **Approve** | Allows the turn to complete | Sub-agent marks task done normally |
+| **Reject** (with comment) | Blocks the turn and surfaces your comment | Orchestrator re-dispatches the agent to address your feedback |
+| **Defer** (with comment) | Blocks the turn and surfaces your comment | Session stops; user re-triggers the command when the blocker is cleared |
+| **No decision within `GATE_HUMAN_WAIT`** (default 10 min) | Blocks the turn with a timeout message | Session stops; user decides later and re-triggers the command |
+
+While waiting, the hook prints progress to stderr every 30 seconds (configurable via `GATE_HUMAN_STATUS_EVERY`) so you can see it's alive:
+
+```
+[quality-gate-hook] Change queued for human review. Open http://127.0.0.1:7733/review/{id} to approve/reject. Waiting up to 600s for a decision.
+[quality-gate-hook] Still waiting for human decision (570s remaining)...
+[quality-gate-hook] Still waiting for human decision (540s remaining)...
+[quality-gate-hook] Human approved {id}. Allowing turn to complete.
+```
+
+### Picking the right wait time
+
+- **Short reviews** (quick eyeball checks): default 10 min is fine
+- **Thorough reviews**: bump `GATE_HUMAN_WAIT=3600` (1 hour) for deeper inspection
+- **Async reviews** (review comes hours later): use `GATE_HUMAN_WAIT=60` + manual re-trigger — keeping a Claude session open for hours isn't practical
+
+If the wait times out, the review is still in the queue — nothing is lost. Decide in the UI, then re-trigger the command.
 
 ## API
 

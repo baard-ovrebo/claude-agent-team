@@ -172,7 +172,7 @@ Every command that writes code (`/create`, `/bug`, `/jira`, `/new-feature`, `/cr
 5. **External Quality Gate service** (strongest layer) — see [`quality-gate/`](quality-gate/) for a standalone HTTP service that runs **three independent checks** on every agent code change:
    - **Linter pass** (ESLint, ruff/pylint, go vet, cargo clippy, dotnet format, rubocop, phpstan) — mechanical issues the AI might overlook
    - **Fresh Claude reviewer** — independent Claude instance with NO knowledge of the original agent's reasoning, reviews the diff cold (prevents anchoring bias)
-   - **Optional human review queue** — web UI at `http://127.0.0.1:7733/` for items flagged for human approval
+   - **Optional human review queue** — web UI at `http://127.0.0.1:7733/` for items flagged for human approval. When a change requires human review, the hook **polls the service and waits** (default 10 min, configurable) for your Approve / Reject / Defer decision before allowing or blocking the agent turn. Progress is printed to stderr every 30 seconds so you can see the session is still alive.
 
    The gate returns `PASS`, `FAIL` (with specific findings), or `HUMAN_REVIEW_REQUIRED`. The hook uses the verdict to allow or block the sub-agent turn. Install via Docker: `cd quality-gate && docker compose up -d`
 

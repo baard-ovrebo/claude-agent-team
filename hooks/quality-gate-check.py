@@ -21,6 +21,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.request
 import urllib.error
 
@@ -28,6 +29,14 @@ import urllib.error
 GATE_URL = os.environ.get("GATE_URL", "http://127.0.0.1:7733")
 GATE_TIMEOUT_S = int(os.environ.get("GATE_TIMEOUT", "180"))
 GATE_REQUIRE_HUMAN = os.environ.get("GATE_REQUIRE_HUMAN_REVIEW", "false").lower() == "true"
+
+# Polling behavior for HUMAN_REVIEW_REQUIRED verdicts.
+# Hook waits for the human to decide (APPROVE / REJECT / DEFER) by polling
+# the /review/{id}/status endpoint until a decision is recorded OR the wait
+# timeout expires.
+HUMAN_WAIT_S = int(os.environ.get("GATE_HUMAN_WAIT", "600"))          # default: 10 min
+HUMAN_POLL_INTERVAL_S = int(os.environ.get("GATE_HUMAN_POLL_INTERVAL", "5"))
+HUMAN_STATUS_EVERY_S = int(os.environ.get("GATE_HUMAN_STATUS_EVERY", "30"))
 
 
 def main() -> None:
@@ -74,14 +83,130 @@ def main() -> None:
         sys.exit(0)
 
     if verdict.get("verdict") == "HUMAN_REVIEW_REQUIRED":
-        msg = _format_human_review(verdict)
-        print(json.dumps({"decision": "block", "reason": msg}))
+        check_id = verdict.get("check_id", "")
+        review_url = verdict.get("human_review_url", "")
+        # Wait for a human decision (poll the service). Allows, blocks, or
+        # times out depending on what the human chose.
+        decision = _wait_for_human_decision(check_id, review_url)
+        _handle_human_decision(decision, verdict)
         sys.exit(0)
 
     # FAIL — block with findings
     msg = _format_failure(verdict)
     print(json.dumps({"decision": "block", "reason": msg}))
     sys.exit(0)
+
+
+def _wait_for_human_decision(check_id: str, review_url: str) -> dict:
+    """Poll the status endpoint until a decision is recorded or we time out.
+
+    Returns a dict: {outcome: APPROVE|REJECT|DEFER|TIMEOUT|ERROR, comment: str}
+    """
+    if not check_id:
+        return {"outcome": "ERROR", "comment": "No check_id returned by gate"}
+
+    status_url = f"{GATE_URL}/review/{check_id}/status"
+    deadline = time.time() + HUMAN_WAIT_S
+    last_status_print = 0.0
+
+    # Tell the user what's happening (status line — stderr so it's visible but
+    # doesn't end up in the block message)
+    _progress(
+        f"Change queued for human review. Open {review_url} to approve/reject. "
+        f"Waiting up to {HUMAN_WAIT_S}s for a decision."
+    )
+
+    while time.time() < deadline:
+        try:
+            req = urllib.request.Request(status_url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+        except urllib.error.URLError:
+            return {
+                "outcome": "ERROR",
+                "comment": "Quality Gate service became unreachable while waiting for the decision",
+            }
+        except Exception as e:  # noqa: BLE001
+            return {"outcome": "ERROR", "comment": f"Status poll error: {e}"}
+
+        decision = (data.get("decision") or "").upper()
+        if decision in ("APPROVE", "REJECT", "DEFER"):
+            return {"outcome": decision, "comment": data.get("comment") or ""}
+
+        # Periodic progress ping so the user knows we're still waiting
+        now = time.time()
+        if now - last_status_print >= HUMAN_STATUS_EVERY_S:
+            remaining = int(deadline - now)
+            _progress(f"Still waiting for human decision ({remaining}s remaining)...")
+            last_status_print = now
+
+        time.sleep(HUMAN_POLL_INTERVAL_S)
+
+    return {"outcome": "TIMEOUT", "comment": ""}
+
+
+def _handle_human_decision(decision: dict, verdict: dict) -> None:
+    """Convert a human decision into a hook response (allow or block)."""
+    outcome = decision.get("outcome", "ERROR")
+    comment = decision.get("comment", "")
+    review_url = verdict.get("human_review_url", "")
+    check_id = verdict.get("check_id", "")
+
+    if outcome == "APPROVE":
+        _progress(f"Human approved {check_id}. Allowing turn to complete.")
+        # Exit 0 with no JSON body = allow
+        return
+
+    if outcome == "REJECT":
+        msg = (
+            "## Quality Gate — Human REJECTED this change\n\n"
+            f"**Reviewer:** {check_id}\n\n"
+            f"**Comment:**\n\n{comment or '(no comment provided)'}\n\n"
+            "Re-dispatch the sub-agent to address the reviewer's feedback. "
+            "Include an updated `## Quality Audit` section in the new report."
+        )
+        print(json.dumps({"decision": "block", "reason": msg}))
+        return
+
+    if outcome == "DEFER":
+        msg = (
+            "## Quality Gate — Human DEFERRED this change\n\n"
+            f"**Reviewer:** {check_id}\n\n"
+            f"**Comment:**\n\n{comment or '(no comment provided)'}\n\n"
+            f"The change is neither approved nor rejected — the reviewer needs more information.\n\n"
+            f"Re-trigger the same command once the blocker is cleared, "
+            f"or address the deferral reason above."
+        )
+        print(json.dumps({"decision": "block", "reason": msg}))
+        return
+
+    if outcome == "TIMEOUT":
+        msg = (
+            "## Quality Gate — Human review timed out\n\n"
+            f"No decision was recorded within {HUMAN_WAIT_S} seconds.\n\n"
+            f"**The change is still queued:** {review_url}\n\n"
+            "The session has been blocked to prevent the sub-agent from continuing "
+            "without a decision. Options:\n"
+            f"- Decide in the web UI, then re-trigger the same command\n"
+            f"- Increase `GATE_HUMAN_WAIT` (current: {HUMAN_WAIT_S}s) if reviews "
+            f"commonly take longer than this"
+        )
+        print(json.dumps({"decision": "block", "reason": msg}))
+        return
+
+    # ERROR or unknown — surface the reason but don't silently allow
+    msg = (
+        "## Quality Gate — Error while waiting for human review\n\n"
+        f"{comment or 'Unknown error'}\n\n"
+        f"**Review queue entry (if created):** {review_url}\n\n"
+        "The session has been blocked. Check the Quality Gate service logs and retry."
+    )
+    print(json.dumps({"decision": "block", "reason": msg}))
+
+
+def _progress(msg: str) -> None:
+    """Write a user-visible status line to stderr (stdout is reserved for hook JSON)."""
+    print(f"[quality-gate-hook] {msg}", file=sys.stderr, flush=True)
 
 
 def _call_gate(body: dict) -> dict:
@@ -225,17 +350,6 @@ def _format_failure(verdict: dict) -> str:
     lines.append("Sources: `[linter]` = automated lint check; `[reviewer]` = independent Claude reviewer")
     lines.append("Include an updated `## Quality Audit` in the new report addressing each fix.")
     return "\n".join(lines)
-
-
-def _format_human_review(verdict: dict) -> str:
-    url = verdict.get("human_review_url") or "(queue URL unavailable)"
-    return (
-        "## Quality Gate — Human Review Required\n\n"
-        "This change is queued for human review.\n\n"
-        f"**Review here:** {url}\n\n"
-        "The session will be blocked until a human approves, rejects, or defers the change. "
-        "Once decided, re-run the agent dispatch to continue."
-    )
 
 
 if __name__ == "__main__":

@@ -193,7 +193,7 @@ JIRA_API_TOKEN=your-api-token</pre>
 </tbody></table>
 </li>
 <li><strong>Fresh Claude reviewer</strong> &mdash; spawns an <strong>isolated</strong> Claude instance (via <code>claude -p</code> CLI, with OpenAI/Gemini as fallbacks) that reviews the diff with NO knowledge of the original agent's reasoning. This is the key part: an anchored reviewer in the same conversation would justify the original choices; a fresh reviewer sees them cold and spots what was rationalized.</li>
-<li><strong>Human review queue</strong> &mdash; SQLite-backed queue with web UI at <code>http://127.0.0.1:7733/</code> for items flagged for human approval. Approve / Reject / Defer decisions unblock the agent turn.</li>
+<li><strong>Human review queue</strong> &mdash; SQLite-backed queue with web UI at <code>http://127.0.0.1:7733/</code> for items flagged for human approval. The hook <strong>polls the service and waits</strong> for your Approve / Reject / Defer decision (default: up to 10 minutes, configurable via <code>GATE_HUMAN_WAIT</code>). Progress is printed every 30 seconds so the session stays visibly alive. On approve: agent continues. On reject (with comment): hook blocks with your feedback and the orchestrator re-dispatches. On defer or timeout: session pauses and the user re-triggers the command when ready.</li>
 </ol>
 <p><strong>Verdict:</strong> <code>PASS</code>, <code>FAIL</code> (with specific findings), or <code>HUMAN_REVIEW_REQUIRED</code>.</p>
 <p><strong>Install:</strong> <code>cd quality-gate &amp;&amp; docker compose up -d</code></p>

@@ -14,6 +14,25 @@ Runs before every user message. Prepends a short Rule Z reminder to the prompt c
 
 **Keeps the rule top-of-mind** in long conversations where earlier system prompts may be deprioritized.
 
+### `quality-gate-check.py` — SubagentStop hook (needs quality-gate service)
+Runs AFTER `quality-audit-check.py`. Pushes the sub-agent's code changes to the **Quality Gate service** (`quality-gate/`) which runs linter + fresh Claude reviewer + optional human review queue. Uses the verdict to allow or block the sub-agent turn:
+
+- **PASS** → allow
+- **FAIL** → block with the findings; orchestrator re-dispatches
+- **HUMAN_REVIEW_REQUIRED** → **polls the service and waits** for your decision (default 10 minutes, configurable via `GATE_HUMAN_WAIT`). On approval: allows. On rejection: blocks with your comment. On timeout: blocks with a "decide and re-trigger" message.
+
+Environment variables (all optional):
+- `GATE_URL` (default `http://127.0.0.1:7733`)
+- `GATE_TIMEOUT` — total verdict timeout (default 180s)
+- `GATE_REQUIRE_HUMAN_REVIEW` — force human review on every change (default `false`)
+- `GATE_HUMAN_WAIT` — max time to wait for a human decision (default 600s = 10 min)
+- `GATE_HUMAN_POLL_INTERVAL` — poll interval while waiting (default 5s)
+- `GATE_HUMAN_STATUS_EVERY` — how often to print a "still waiting..." progress line to stderr (default 30s)
+
+If the Quality Gate service isn't running, this hook logs a warning and allows the turn — it never blocks the pipeline on service unavailability.
+
+See [`../quality-gate/README.md`](../quality-gate/README.md) for the full service setup.
+
 ## Installation
 
 Add to your `~/.claude/settings.json` (global) or `.claude/settings.json` (per-project):
@@ -27,6 +46,10 @@ Add to your `~/.claude/settings.json` (global) or `.claude/settings.json` (per-p
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/quality-audit-check.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/hooks/quality-gate-check.py\""
           }
         ]
       }
