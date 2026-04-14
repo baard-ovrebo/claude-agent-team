@@ -34,7 +34,16 @@ def detect_language(path: str) -> str | None:
 
 
 def run_linter(lang: str, file_path: str, project_root: str, content: str) -> list[dict]:
-    """Dispatch to the correct linter for the language. Best-effort — missing tools return []."""
+    """Dispatch to the correct linter for the language. Best-effort — missing tools return [].
+
+    If the file doesn't exist at `file_path` (common when the gate runs as a
+    separate service and receives file content over HTTP), writes the content
+    to a temp file and lints that, then remaps diagnostic paths back to the
+    original `file_path` so findings are reported with the caller's path.
+    """
+    import tempfile
+    from pathlib import Path
+
     runners = {
         "js": _run_eslint,
         "ts": _run_eslint,
@@ -48,18 +57,55 @@ def run_linter(lang: str, file_path: str, project_root: str, content: str) -> li
     runner = runners.get(lang)
     if not runner:
         return []
+
+    # If the file exists at file_path, use it directly. Otherwise write content
+    # to a temp file that preserves the extension so the linter recognises it.
+    cleanup_path: str | None = None
+    lint_path = file_path
     try:
-        return runner(file_path, project_root, content)
+        if not os.path.exists(file_path) and content:
+            suffix = Path(file_path).suffix or _default_suffix(lang)
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=suffix, delete=False, encoding="utf-8"
+            ) as tmp:
+                tmp.write(content)
+                cleanup_path = tmp.name
+                lint_path = tmp.name
+    except Exception:  # noqa: BLE001
+        # Couldn't stage a temp file — fall through and let the runner fail naturally
+        pass
+
+    try:
+        raw = runner(lint_path, project_root, content)
     except FileNotFoundError:
-        # Linter not installed — silently skip
-        return []
+        # Linter binary not installed — silently skip
+        raw = []
     except Exception as e:  # noqa: BLE001
-        return [{
+        raw = [{
             "severity": "info",
             "line": 0,
             "rule": "linter-error",
             "message": f"Linter failed: {e}",
         }]
+    finally:
+        if cleanup_path:
+            try:
+                os.unlink(cleanup_path)
+            except OSError:
+                pass
+
+    # Normalise the reported path back to the caller's original file_path
+    for item in raw:
+        if "file" not in item:
+            item["file"] = file_path
+    return raw
+
+
+def _default_suffix(lang: str) -> str:
+    return {
+        "js": ".js", "ts": ".ts", "py": ".py", "go": ".go", "rs": ".rs",
+        "cs": ".cs", "rb": ".rb", "php": ".php",
+    }.get(lang, "")
 
 
 # --------------------------------------------------------------------------- #

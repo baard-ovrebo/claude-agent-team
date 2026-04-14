@@ -37,8 +37,14 @@ from queue_store import QueueStore
 DB_PATH = os.environ.get("GATE_DB", "quality-gate.db")
 HOST = os.environ.get("GATE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("GATE_PORT", "7733"))
+# Public URL shown in review links (clients can't reach 0.0.0.0; remap to localhost)
+PUBLIC_HOST = os.environ.get("GATE_PUBLIC_HOST", "127.0.0.1" if HOST == "0.0.0.0" else HOST)
 LINTER_TIMEOUT_S = int(os.environ.get("GATE_LINTER_TIMEOUT", "60"))
 REVIEWER_TIMEOUT_S = int(os.environ.get("GATE_REVIEWER_TIMEOUT", "120"))
+# In strict mode the gate FAILS when neither the linter nor the reviewer
+# actually ran (i.e. no tools available). Default false — weak validation
+# surfaces a warning but allows the turn.
+STRICT_MODE = os.environ.get("GATE_STRICT", "false").lower() == "true"
 
 _store: QueueStore | None = None
 
@@ -132,6 +138,27 @@ async def gate_check(req: CheckRequest) -> Verdict:
     verdict = "PASS"
     summary_parts: list[str] = []
 
+    # Weak validation check — if NOTHING actually ran, we can't claim PASS
+    if not linter_ran and not reviewer_ran:
+        all_findings.append(
+            Finding(
+                source="gate",
+                severity="major" if STRICT_MODE else "info",
+                rule="weak-validation",
+                message=(
+                    "Neither the linter nor the fresh reviewer was able to validate "
+                    "this change (no linter tool available for this language AND no "
+                    "reviewer API configured). The verdict is advisory only. Install "
+                    "a linter for the file's language or configure OPENAI_API_KEY / "
+                    "GOOGLE_AI_KEY / claude CLI to enable the fresh reviewer."
+                ),
+            )
+        )
+        if STRICT_MODE:
+            verdict = "FAIL"
+            summary_parts.append("weak validation (strict mode)")
+            major_count += 1  # reflect in counts
+
     if critical_count > 0:
         verdict = "FAIL"
         summary_parts.append(f"{critical_count} critical issue(s)")
@@ -157,7 +184,7 @@ async def gate_check(req: CheckRequest) -> Verdict:
             findings=[f.model_dump() for f in all_findings],
             audit=req.quality_audit or "",
         )
-        human_review_url = f"http://{HOST}:{PORT}/review/{check_id}"
+        human_review_url = f"http://{PUBLIC_HOST}:{PORT}/review/{check_id}"
 
     duration_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
     summary = (
@@ -179,14 +206,24 @@ async def gate_check(req: CheckRequest) -> Verdict:
 
 
 async def _run_linter_stage(req: CheckRequest) -> tuple[list[Finding], bool]:
-    """Detect language per file and run the matching linter."""
+    """Detect language per file and run the matching linter.
+
+    Returns (findings, truly_ran). `truly_ran` is True only if at least one
+    file was successfully linted with the tool actually available. If the
+    tool is missing or every call failed, `truly_ran` is False so callers
+    can detect weak validation.
+    """
     findings: list[Finding] = []
-    ran = False
+    truly_ran = False
+    languages_seen: set[str] = set()
+    tools_missing: set[str] = set()
+
     for cf in req.changed_files:
         lang = detect_language(cf.path)
         if not lang:
             continue
-        ran = True
+        languages_seen.add(lang)
+
         try:
             raw = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -215,6 +252,15 @@ async def _run_linter_stage(req: CheckRequest) -> tuple[list[Finding], bool]:
             )
             continue
 
+        # linters.run_linter returns [] when the tool isn't installed. We can't
+        # distinguish "tool missing" from "no issues" from the empty list alone,
+        # but we CAN detect it by checking whether the underlying binary exists.
+        tool_available = _linter_tool_available(lang)
+        if not tool_available:
+            tools_missing.add(lang)
+            continue
+        truly_ran = True
+
         for item in raw:
             findings.append(
                 Finding(
@@ -227,11 +273,53 @@ async def _run_linter_stage(req: CheckRequest) -> tuple[list[Finding], bool]:
                 )
             )
 
-    return findings, ran
+    # If we saw files of a language but the tool wasn't available, surface that
+    for lang in tools_missing:
+        findings.append(
+            Finding(
+                source="linter",
+                severity="info",
+                file=None,
+                rule="linter-missing",
+                message=(
+                    f"No linter available for language '{lang}' in the gate environment. "
+                    f"Install the tool on the host, run the service natively, or install "
+                    f"it inside the container."
+                ),
+            )
+        )
+
+    return findings, truly_ran
+
+
+def _linter_tool_available(lang: str) -> bool:
+    """Check if the backing linter executable is available."""
+    import shutil
+    tool_map = {
+        "js": "npx", "ts": "npx",
+        "py": "ruff",  # falls back to pylint internally — check both
+        "go": "go",
+        "rs": "cargo",
+        "cs": "dotnet",
+        "rb": "rubocop",
+        "php": "phpstan",
+        "java": None, "kt": None, "swift": None,  # not implemented yet
+    }
+    tool = tool_map.get(lang)
+    if not tool:
+        return False
+    if lang == "py":
+        return shutil.which("ruff") is not None or shutil.which("pylint") is not None
+    return shutil.which(tool) is not None
 
 
 async def _run_reviewer_stage(req: CheckRequest) -> tuple[list[Finding], bool]:
-    """Spawn a fresh Claude instance that reviews the diff independently."""
+    """Spawn a fresh Claude instance that reviews the diff independently.
+
+    Returns (findings, truly_ran). `truly_ran` is False if the reviewer
+    returned an 'unavailable' sentinel finding (no API keys / claude CLI),
+    so callers can detect weak validation.
+    """
     try:
         raw = await asyncio.wait_for(
             asyncio.to_thread(
@@ -259,6 +347,20 @@ async def _run_reviewer_stage(req: CheckRequest) -> tuple[list[Finding], bool]:
                     source="reviewer",
                     severity="info",
                     message=f"Fresh reviewer error: {e}",
+                )
+            ],
+            False,
+        )
+
+    # If the only finding is 'reviewer-unavailable', the reviewer didn't actually run
+    if len(raw) == 1 and raw[0].get("rule") == "reviewer-unavailable":
+        return (
+            [
+                Finding(
+                    source="reviewer",
+                    severity=raw[0].get("severity", "info"),
+                    rule=raw[0].get("rule"),
+                    message=raw[0].get("message", ""),
                 )
             ],
             False,

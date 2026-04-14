@@ -39,22 +39,60 @@ Hook allows or blocks the agent turn
 
 ## Installation
 
-### Option A: Docker (recommended)
+### Option A: Docker (easiest setup)
 
 ```bash
 cd quality-gate/
 docker compose up -d
 ```
 
-Service runs at `http://127.0.0.1:7733`.
+Service runs at `http://127.0.0.1:7733`. The image includes Python + `ruff` + `pylint` so **Python linting works out of the box**. For other languages (JS/TS, Go, Rust, C#, Ruby, PHP), the linter tool is not included in the image — you'll see `linter-missing` info findings for those languages. Options:
+- Run the service natively (Option B) — uses the host's installed linters
+- Install tools inside the container via a custom Dockerfile
+- Ignore it — the fresh reviewer can still validate those files if you configure an API key
 
-### Option B: Native Python
+### Option B: Native Python (best multi-language coverage)
 
 ```bash
 cd quality-gate/
 pip install -r requirements.txt
 python server.py
 ```
+
+Service picks up whatever linters are installed on the host: `eslint` (via `npx`), `ruff`, `pylint`, `go`, `cargo`, `dotnet`, `rubocop`, `phpstan`. You don't need all of them — only the ones for languages in your codebase.
+
+### Verifying the service is up
+
+```bash
+curl http://127.0.0.1:7733/health
+# → {"status":"ok","service":"quality-gate"}
+```
+
+If you get `connection refused`, check `docker compose ps` (for Docker) or that the Python process is running.
+
+### Enable the Fresh Reviewer
+
+The linter alone only catches mechanical issues. The fresh reviewer is what catches "works but wasteful" patterns. Configure ONE of:
+
+```bash
+# Option 1: Claude CLI (best — same model family used elsewhere)
+# Just install claude CLI on the host and the reviewer uses it automatically.
+
+# Option 2: OpenAI API
+echo "OPENAI_API_KEY=sk-..." >> ~/.claude/council.env
+
+# Option 3: Gemini API
+echo "GOOGLE_AI_KEY=AIza..." >> ~/.claude/council.env
+```
+
+For Docker, mount the council.env into the container (edit `docker-compose.yml`):
+```yaml
+    volumes:
+      - ./data:/data
+      - ${HOME}/.claude/council.env:/root/.claude/council.env:ro
+```
+
+Without a configured reviewer, you'll see `reviewer-unavailable` info findings. The gate still works — linter findings are still enforced — but you lose the independent AI review layer.
 
 ## Wiring the Hook
 
@@ -91,9 +129,11 @@ Environment variables:
 |---|---|---|
 | `GATE_HOST` | `127.0.0.1` | Service bind address |
 | `GATE_PORT` | `7733` | Service port |
+| `GATE_PUBLIC_HOST` | auto | Hostname used in review links (auto-remaps `0.0.0.0` → `127.0.0.1`) |
 | `GATE_DB` | `quality-gate.db` | SQLite path for the human review queue |
 | `GATE_LINTER_TIMEOUT` | `60` | Linter timeout per file (seconds) |
 | `GATE_REVIEWER_TIMEOUT` | `120` | Fresh reviewer timeout (seconds) |
+| `GATE_STRICT` | `false` | If `true`, verdict is `FAIL` when neither linter nor reviewer actually ran |
 | `GATE_URL` (hook) | `http://127.0.0.1:7733` | Where the hook calls the service |
 | `GATE_TIMEOUT` (hook) | `180` | Total timeout the hook waits for verdict |
 | `GATE_REQUIRE_HUMAN_REVIEW` (hook) | `false` | If `true`, every change requires human approval |
@@ -173,6 +213,51 @@ HTML review page — approve/reject/defer.
 
 ```json
 { "decision": "APPROVE|REJECT|DEFER", "comment": "..." }
+```
+
+## Verifying end-to-end
+
+After installation, run these to confirm each layer works. Exact commands, exact expected output:
+
+```bash
+# 1. Health
+curl http://127.0.0.1:7733/health
+# expect: {"status":"ok","service":"quality-gate"}
+
+# 2. Python linting works (ruff catches unused imports)
+curl -s -X POST http://127.0.0.1:7733/gate/check \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"t","agent_name":"test","project_root":"/tmp",
+       "changed_files":[{"path":"bad.py","content":"import os\nimport sys\ndef f(x):\n    y=5\n    return x"}]}'
+# expect: verdict = FAIL, findings include F401 (unused imports) and F841 (unused variable)
+
+# 3. Weak validation warning for unsupported language (without a reviewer API)
+curl -s -X POST http://127.0.0.1:7733/gate/check \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"t","agent_name":"test","project_root":"/tmp",
+       "changed_files":[{"path":"x.ts","content":"const x = 1"}]}'
+# expect: verdict = PASS (non-strict), weak-validation info finding present,
+#         linter_ran=false, reviewer_ran=false
+
+# 4. Human review queue
+CID=$(curl -s -X POST http://127.0.0.1:7733/gate/check \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"t","agent_name":"test","project_root":"/tmp",
+       "changed_files":[{"path":"x.py","content":"def f(): pass"}],
+       "require_human_review":true}' | python -c "import json,sys;print(json.load(sys.stdin)['check_id'])")
+echo "Review at: http://127.0.0.1:7733/review/$CID"
+# Open that URL in a browser — Approve/Reject/Defer buttons should work.
+```
+
+If you've configured an OpenAI/Gemini/Claude reviewer, test that too:
+
+```bash
+curl -s -X POST http://127.0.0.1:7733/gate/check \
+  -H "Content-Type: application/json" \
+  -d '{"session_id":"t","agent_name":"test","project_root":"/tmp",
+       "changed_files":[{"path":"bad.ts","content":"function find(users, id){for(let i=0;i<users.length;i++){if(users[i].id===id)return users[i]}return null}"}]}'
+# expect: findings from source="reviewer" pointing out the linear search
+#         (Set/Map recommendation) and reviewer_ran=true
 ```
 
 ## Adding a New Linter
