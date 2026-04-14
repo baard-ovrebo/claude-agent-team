@@ -164,9 +164,17 @@ Every command that writes code (`/create`, `/bug`, `/jira`, `/new-feature`, `/cr
 1. **Mandate** (prompt text) — performance, resource efficiency, and code structure standards explained up-front
 2. **Hard Rule** (orchestrator level) — "Rule Z" at same enforcement level as "never force-push to main"
 3. **Agent-level `[QUALITY BAR — NON-NEGOTIABLE]` block** — injected into every sub-agent prompt so the agents themselves see *"your code will be REJECTED if..."*
-4. **Runtime hooks** (optional but recommended) — see [`hooks/`](hooks/) for two Python hooks that enforce the rule at runtime:
+4. **Runtime hooks** (optional but recommended) — see [`hooks/`](hooks/) for three Python hooks that enforce the rule at runtime:
    - `quality-audit-check.py` — blocks sub-agent completion if `## Quality Audit` section is missing from the report
    - `quality-reminder.py` — prepends Rule Z reminder to every user prompt so it stays in short-term context
+   - `quality-gate-check.py` — calls the external Quality Gate service (see layer 5) for linter + fresh reviewer verdict
+
+5. **External Quality Gate service** (strongest layer) — see [`quality-gate/`](quality-gate/) for a standalone HTTP service that runs **three independent checks** on every agent code change:
+   - **Linter pass** (ESLint, ruff/pylint, go vet, cargo clippy, dotnet format, rubocop, phpstan) — mechanical issues the AI might overlook
+   - **Fresh Claude reviewer** — independent Claude instance with NO knowledge of the original agent's reasoning, reviews the diff cold (prevents anchoring bias)
+   - **Optional human review queue** — web UI at `http://127.0.0.1:7733/` for items flagged for human approval
+
+   The gate returns `PASS`, `FAIL` (with specific findings), or `HUMAN_REVIEW_REQUIRED`. The hook uses the verdict to allow or block the sub-agent turn. Install via Docker: `cd quality-gate && docker compose up -d`
 
 Every agent report MUST include a `## Quality Audit` section covering: hot paths, data structures, cleanup, caching, batching, memory at 10x/100x scale, and what shortcuts were rejected. **The orchestrator is instructed to reject reports missing this section and re-dispatch.**
 

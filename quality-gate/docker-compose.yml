@@ -1,0 +1,15 @@
+services:
+  quality-gate:
+    build: .
+    container_name: claude-quality-gate
+    ports:
+      - "7733:7733"
+    volumes:
+      - ./data:/data
+    environment:
+      GATE_DB: /data/quality-gate.db
+      GATE_HOST: 0.0.0.0
+      GATE_PORT: "7733"
+      # Mount your host .claude/council.env if you want Gemini/OpenAI fallback
+      # for the fresh reviewer (Claude CLI isn't usually present in containers).
+    restart: unless-stopped
