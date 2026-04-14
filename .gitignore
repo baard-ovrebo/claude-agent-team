@@ -6,3 +6,6 @@ reports/jira-*/
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Quality gate runtime data
+quality-gate/data/
