@@ -598,6 +598,13 @@ RESOURCE EFFICIENCY:
 CODE STRUCTURE:
 - Single responsibility per function — if it does 2+ things, split it
 - No duplicated logic — if the same pattern appears 3+ times, extract a utility
+CODE REUSE (read this FIRST):
+- Before writing ANY helper/utility/constant/type, grep the project for existing ones. If a similar utility exists, USE IT — do not duplicate.
+- Before writing a new component, check if an existing component can be extended with props.
+- If you write the same logic twice, stop and extract a shared utility.
+- Shared types/interfaces/models live in ONE place (types/, models/, shared/) — import, don't redefine.
+- Constants and magic values go in a central location — no inline magic numbers or duplicated string literals.
+- The project should have ONE way to do each thing. If you notice two ways, flag it in the Quality Audit.
 - Error handling at boundaries (API edges, user input, external calls)
 - Reuse existing utilities before writing new ones
 - No dead code, no commented-out blocks
