@@ -259,18 +259,68 @@ CODE STRUCTURE:
 - Error handling at boundaries (API edges, user input, external calls)
 - No dead code, no commented-out blocks
 
-WATCH OUT for AI-generated 'works but wasteful' patterns (each line: problem → fix):
-- Inline `style={{...}}` in JSX → hoist to a module-scope const. Inline objects allocate every render and break React.memo.
-- Inline `onClick={() => ...}` in JSX → use useCallback bound to stable identifiers. Inline arrows break React.memo.
-- Missing React.memo on list-row components → wrap rows in React.memo with stable handler props so unchanged rows don't re-render.
-- Missing useMemo on derived data used by many children → memoize it once, not per consumer.
-- `array.find(...)` / `array.includes(...)` in a render or loop → build a Set/Map once and use O(1) lookup.
-- Rebuilding entire lists when one item changed → update one element with referential stability so React.memo can skip unchanged rows.
-- setState/update in a loop → batch into one setState(fn) call.
-- JSON.parse(JSON.stringify(obj)) for deep clone → structuredClone or targeted spreads.
-- Loading all data then filtering in memory → filter server-side via query string / SQL.
-- Fetching data the backend already has cached → reuse the shared API client's cache.
-- Validating the same thing in 3 layers → validate at the boundary once, trust internally.
+WATCH OUT for AI-generated 'works but wasteful' patterns. Study these before you write code.
+
+Pattern 1 — Inline `style={{...}}` in JSX (breaks React.memo, allocates every render):
+```tsx
+// BAD — new object on every render, children re-render even with same props
+<div style={{padding: 8, color: 'red'}}>{label}</div>
+
+// GOOD — hoisted once, referential stability preserved
+const LABEL_STYLE = { padding: 8, color: 'red' };
+<div style={LABEL_STYLE}>{label}</div>
+```
+
+Pattern 2 — Inline arrow functions in JSX props (breaks React.memo):
+```tsx
+// BAD — new function on every render
+<TaskRow onToggle={() => toggle(task.id)} />
+
+// GOOD — stable callback bound via the row's own props
+const handleToggle = useCallback((id: string) => toggle(id), [toggle]);
+<TaskRow onToggle={handleToggle} id={task.id} />
+// TaskRow internally: const onClick = () => props.onToggle(props.id);
+// (hoisted via useCallback with [props.onToggle, props.id])
+```
+
+Pattern 3 — `array.find` / `array.includes` in a render or loop (O(n·m), scales badly):
+```tsx
+// BAD — O(users.length) per row, O(rows × users) per render
+{tasks.map(t => <Row assignee={users.find(u => u.id === t.assigneeId)?.name} />)}
+
+// GOOD — build Map once, O(1) per row
+const userName = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
+{tasks.map(t => <Row assignee={userName.get(t.assigneeId)} />)}
+```
+
+Pattern 4 — Missing React.memo on list-row components (rebuilds every row on any change):
+```tsx
+// BAD — TaskRow re-renders all N rows when any task changes
+function TaskRow({task, onToggle}) { return <div>...</div>; }
+
+// GOOD — only rows with changed props re-render
+const TaskRow = React.memo(function TaskRow({task, onToggle}) {
+  return <div>...</div>;
+});
+```
+
+Pattern 5 — Deep clone via JSON.parse(JSON.stringify(...)):
+```ts
+// BAD — slow, loses Date/Map/Set/undefined
+const copy = JSON.parse(JSON.stringify(obj));
+
+// GOOD — use structuredClone (browser/Node 17+) or targeted spreads
+const copy = structuredClone(obj);
+// Or for simple state updates:
+setTasks(prev => prev.map(t => t.id === id ? {...t, status: 'done'} : t));
+```
+
+Other patterns (no snippet — apply the same "show existing, avoid this" discipline):
+- Rebuilding entire lists when one item changed → update one with referential stability (see pattern 5's GOOD example)
+- setState/update inside a `for`/`forEach`/`while` body → collect into an array, call setState once at the end (functional updates inside `.map()` are fine)
+- Loading all data then filtering in memory → filter server-side via query string / SQL
+- Fetching data the backend already has cached → reuse the shared API client's cache
+- Validating the same thing in 3 layers → validate at the boundary once, trust internally
 
 BEFORE REPORTING DONE, include a MACHINE-CHECKABLE Quality Audit section in your output. Start with a structured YAML block, then a brief prose summary below it:
 

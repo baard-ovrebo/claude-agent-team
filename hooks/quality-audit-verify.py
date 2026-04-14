@@ -303,7 +303,26 @@ def _verify_claims(claims: dict, code: str) -> list[dict]:
     """
     unverified: list[dict] = []
 
-    # memoized_components: grep for React.memo(ComponentName) or forwardRef
+    # Prefer AST-based verification via the Node helper if available
+    ast_result = _try_ast_verify(claims, code_files=_split_code(code))
+    if ast_result is not None:
+        # If AST verification succeeds, use its unverified list directly
+        for item in ast_result.get("unverified", []):
+            unverified.append({
+                "field": item.get("field", "unknown"),
+                "severity": "contradiction",
+                "message": item.get("reason", "unverified"),
+            })
+        # Still run the contradiction-in-code checks below (inline style counts etc.)
+        # because AST only covers the named-claim list, not "the audit claimed X but
+        # the code still has 15 violations of X's pattern"
+        # Skip the redundant regex checks for the claims the AST already handled
+        _check_inline_style_contradictions(code, claims, unverified)
+        _check_inline_arrow_contradictions(code, claims, unverified)
+        _check_set_map_and_cleanup(code, claims, unverified)
+        return unverified
+
+    # Fallback: regex verification
     for name in _as_list(claims.get("memoized_components")):
         if not name:
             continue
@@ -457,6 +476,105 @@ def _is_module_const(name: str, code: str) -> bool:
 
 def _block(reason: str) -> None:
     print(json.dumps({"decision": "block", "reason": reason}))
+
+
+# --------------------------------------------------------------------------- #
+# AST helper delegation
+# --------------------------------------------------------------------------- #
+def _try_ast_verify(claims: dict, code_files: list[tuple[str, str]]) -> dict | None:
+    """Invoke the Node.js AST helper. Returns its JSON result or None on failure.
+
+    Writes a task JSON to a temp file and shells out to `node ast-verify.mjs`.
+    If node isn't available, or the helper errors, returns None so the caller
+    falls back to the regex checks.
+    """
+    import shutil as _sh
+    import tempfile as _tmp
+    import subprocess as _sp
+
+    if not _sh.which("node"):
+        return None
+    helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ast-verify.mjs")
+    if not os.path.exists(helper):
+        return None
+
+    # Write code to temp files so the AST helper can parse them
+    temp_paths = []
+    try:
+        for i, (_, content) in enumerate(code_files):
+            fd, path = _tmp.mkstemp(suffix=f"-qa{i}.tsx", text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(content)
+            temp_paths.append(path)
+
+        task = {
+            "files": temp_paths,
+            "claims": {
+                "memoized_components": _as_list(claims.get("memoized_components")),
+                "usecallback_handlers": _as_list(claims.get("usecallback_handlers")),
+                "usememo_derivations": _as_list(claims.get("usememo_derivations")),
+                "hoisted_style_constants": _as_list(claims.get("hoisted_style_constants")),
+            },
+        }
+        fd, task_path = _tmp.mkstemp(suffix=".json", text=True)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(task, fh)
+
+        result = _sp.run(
+            ["node", helper, task_path],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        return json.loads(result.stdout)
+    except Exception:
+        return None
+    finally:
+        for p in temp_paths:
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+
+
+def _split_code(code: str) -> list[tuple[str, str]]:
+    """Split concatenated code back into approximate files for AST handling."""
+    # The code is already concatenated with "\n\n" separators — treat as one file
+    return [("combined.tsx", code)]
+
+
+def _check_inline_style_contradictions(code: str, claims: dict, unverified: list) -> None:
+    inline = len(re.findall(r"style\s*=\s*\{\{", code))
+    if inline >= 3 and claims.get("hoisted_style_constants"):
+        unverified.append({
+            "field": "hoisted_style_constants",
+            "severity": "contradiction",
+            "message": f"{inline} inline style={{...}} literals still in code despite hoisted_style_constants claim",
+        })
+
+
+def _check_inline_arrow_contradictions(code: str, claims: dict, unverified: list) -> None:
+    arrows = len(re.findall(r"=\s*\{\s*\(?[a-zA-Z_]*\)?\s*=>", code))
+    if arrows >= 3 and claims.get("usecallback_handlers"):
+        unverified.append({
+            "field": "usecallback_handlers",
+            "severity": "contradiction",
+            "message": f"{arrows} inline arrow functions in JSX props still in code despite usecallback_handlers claim",
+        })
+
+
+def _check_set_map_and_cleanup(code: str, claims: dict, unverified: list) -> None:
+    if claims.get("set_uses") and not re.search(r"\bnew\s+Set\s*\(", code):
+        unverified.append({"field": "set_uses", "severity": "contradiction",
+                           "message": "no `new Set(` found despite set_uses claim"})
+    if claims.get("map_uses") and not re.search(r"\bnew\s+Map\s*\(", code):
+        unverified.append({"field": "map_uses", "severity": "contradiction",
+                           "message": "no `new Map(` found despite map_uses claim"})
+    if claims.get("cleanup_registered") and not re.search(
+        r"\b(clearInterval|clearTimeout|abort|removeEventListener|unsubscribe|dispose|close)\s*\(", code
+    ):
+        unverified.append({"field": "cleanup_registered", "severity": "contradiction",
+                           "message": "no cleanup calls found despite cleanup_registered claim"})
 
 
 if __name__ == "__main__":
