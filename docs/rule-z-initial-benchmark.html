@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rule Z Benchmark — Results</title>
+<style>
+:root{--bg:#fafaf9;--card:#fff;--text:#1c1917;--muted:#57534e;--border:#e7e5e4;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--blue:#3b82f6;--indigo:#6366f1}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:15px/1.6 system-ui,sans-serif;background:var(--bg);color:var(--text);padding:2rem;max-width:1000px;margin:0 auto}
+h1{font-size:28px;margin-bottom:4px}
+h2{font-size:20px;margin:32px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+h3{font-size:16px;margin:20px 0 8px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;margin:12px 0;background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.05);border-radius:8px;overflow:hidden;font-size:14px}
+th{background:#f5f5f4;text-align:left;padding:10px 14px;font-weight:600;font-size:12px;text-transform:uppercase;color:var(--muted);letter-spacing:.04em}
+td{padding:10px 14px;border-top:1px solid var(--border)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:'SF Mono',Consolas,monospace;font-size:13px}
+.win{color:var(--green);font-weight:700}
+.loss{color:var(--red);font-weight:700}
+.flat{color:var(--muted)}
+.pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.pill.a{background:#fef3c7;color:#92400e}
+.pill.b{background:#dbeafe;color:#1e40af}
+.pill.c{background:#dcfce7;color:#166534}
+.callout{background:var(--card);border-left:4px solid var(--indigo);padding:14px 18px;border-radius:6px;margin:16px 0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.callout.win{border-left-color:var(--green)}
+.callout.fail{border-left-color:var(--red)}
+.callout h3{margin-top:0}
+pre{background:#1e293b;color:#e2e8f0;padding:14px 18px;border-radius:6px;font:13px/1.5 'SF Mono',Consolas,monospace;overflow-x:auto;margin:8px 0}
+.tldr{background:var(--card);border:1px solid var(--border);padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin:16px 0}
+.tldr p{margin-bottom:8px}
+.tldr strong{color:var(--indigo)}
+small{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h1>Rule Z Benchmark — Results</h1>
+<div class="sub">3 variants × 3 runs = 9 total builds · + 3 follow-up Rule Z v2 runs · same spec, same model, isolated contexts</div>
+
+<div class="callout win">
+<h3>UPDATE — Rule Z v2 results (added after initial benchmark)</h3>
+<p>After the first 9 runs showed Rule Z's main win was in render-allocation patterns, I applied three changes and re-ran the C variant (3 more builds: C4, C5, C6):</p>
+<ol style="margin:6px 0 6px 20px">
+<li>Pruned the CODE REUSE section (kept as one line) — the data showed it was ballast</li>
+<li>Added concrete counter-patterns naming <code>style={{...}}</code> and <code>onClick={() => ...}</code> with the fix inline</li>
+<li>Replaced the prose Quality Audit with a structured YAML block that a new verification hook can cross-check against the code</li>
+</ol>
+<table style="margin-top:10px">
+<tr><th>Metric</th><th style="text-align:right">Baseline A</th><th style="text-align:right">Rule Z v1</th><th style="text-align:right">Rule Z v2</th></tr>
+<tr><td>Inline <code>style={{...}}</code> in JSX</td><td class="num">54.67</td><td class="num">21.00</td><td class="num win">0.00</td></tr>
+<tr><td>Inline <code>onClick={() => ...}</code></td><td class="num">6.00</td><td class="num">0.67</td><td class="num win">0.00</td></tr>
+<tr><td>Total anti-patterns</td><td class="num">60.67</td><td class="num">24.33</td><td class="num win">2.67</td></tr>
+<tr><td>vs no-Rule-Z baseline</td><td class="num flat">—</td><td class="num">−60%</td><td class="num win">−96%</td></tr>
+</table>
+<p><strong>All 3 v2 runs hit zero inline objects AND zero inline arrow functions.</strong> The explicit, concrete counter-patterns outperformed v1's abstract "zero allocations in hot paths" wording by ~89%. Concrete examples beat abstract rules — turned out that was the whole difference.</p>
+</div>
+
+<div class="tldr">
+<h3>TL;DR</h3>
+<p><strong>Context engineering did not matter in this benchmark.</strong> Every variant (including A — no context) found and reused the shared utilities by grepping the codebase. Vesa's underlying thesis — "modern agents grep well enough" — is strongly supported.</p>
+<p><strong>Rule Z produced a clear, measurable reduction in render-time allocation patterns.</strong> Inline object literals in JSX dropped 61% (A→C), inline arrow functions in JSX dropped 89%, total anti-patterns dropped 60%.</p>
+<p><strong>My on-the-record prediction was partly wrong.</strong> I predicted B would close most of the &ldquo;didn't know&rdquo; gap — but there was no gap to close. I predicted the C-B delta would be smaller than A-B — it was actually larger. The patterns Rule Z catches are not the ones context can close.</p>
+</div>
+
+<h2>Setup</h2>
+<table>
+<tr><th>Variant</th><th>Context</th><th>Rule Z</th><th>Runs</th></tr>
+<tr><td><span class="pill a">A</span> No context</td><td>None</td><td>No</td><td>3</td></tr>
+<tr><td><span class="pill b">B</span> Minimal map</td><td>2-line <code>CLAUDE.md</code> listing shared utility paths</td><td>No</td><td>3</td></tr>
+<tr><td><span class="pill c">C</span> Map + Rule Z</td><td>Same 2-line <code>CLAUDE.md</code></td><td>Full <code>[QUALITY BAR]</code> + mandatory <code>## Quality Audit</code></td><td>3</td></tr>
+</table>
+
+<p>Feature: Task Dashboard (list, filter, bulk update, 30s auto-refresh, loading/error states). Stack: React + Express + TypeScript. Pre-existing utilities in base repo: <code>formatDueDate</code>, <code>apiCall</code> (cached), <code>MemoryCache</code>, <code>validateTask</code>, shared types.</p>
+
+<h2>Results — Averaged Across 3 Runs per Variant</h2>
+
+<table>
+<tr>
+  <th>Metric</th>
+  <th style="text-align:right">A avg</th>
+  <th style="text-align:right">B avg</th>
+  <th style="text-align:right">C avg</th>
+  <th style="text-align:right">C vs A</th>
+</tr>
+<tr><td>Files written</td><td class="num">7.33</td><td class="num">7.0</td><td class="num">9.67</td><td class="num flat">+32%</td></tr>
+<tr><td>Lines of code</td><td class="num">418.67</td><td class="num">401.67</td><td class="num">469.33</td><td class="num flat">+12%</td></tr>
+<tr><td><strong>Reuse hits</strong> — <code>formatDueDate</code> + <code>apiCall</code></td><td class="num">3</td><td class="num">3</td><td class="num">3.33</td><td class="num flat">+11%</td></tr>
+<tr><td>Reimplemented date formatter</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num flat">—</td></tr>
+<tr><td>Raw <code>fetch()</code> calls (bypassing apiCall)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num flat">—</td></tr>
+<tr><td><code>array.find()</code> in render</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num flat">—</td></tr>
+<tr><td>Set/Map usage for lookups</td><td class="num">5.67</td><td class="num">5.67</td><td class="num">5.0</td><td class="num flat">−12%</td></tr>
+<tr><td><code>JSON.parse(JSON.stringify)</code> clone</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num flat">—</td></tr>
+<tr><td><strong>Inline object literals in JSX (<code>style=&#123;&#123;...&#125;&#125;</code>)</strong></td><td class="num">54.67</td><td class="num">63.33</td><td class="num">21.0</td><td class="num win">−62%</td></tr>
+<tr><td><strong>Inline arrow functions in JSX</strong></td><td class="num">6.0</td><td class="num">5.0</td><td class="num">0.67</td><td class="num win">−89%</td></tr>
+<tr><td>setState inside loops<sup>*</sup></td><td class="num">0</td><td class="num">0.33</td><td class="num">1.67</td><td class="num loss">false positive</td></tr>
+<tr><td><strong>TOTAL anti-patterns</strong></td><td class="num">60.67</td><td class="num">69.0</td><td class="num">24.33</td><td class="num win">−60%</td></tr>
+<tr><td>Quality Audit file written</td><td class="num">0/3</td><td class="num">0/3</td><td class="num">3/3</td><td class="num win">100%</td></tr>
+</table>
+
+<p><small><sup>*</sup> The <code>setState inside loops</code> heuristic caught functional updates inside <code>.map()</code> (optimistic bulk update), which is actually the correct pattern. False-positive — see Limitations below.</small></p>
+
+<h2>Finding 1 — Context engineering didn't matter for structural reuse</h2>
+<div class="callout win">
+<h3>Vesa was right</h3>
+<p>All 3 A-variant runs (no CLAUDE.md, no hints at all) used the shared <code>formatDueDate</code> and <code>apiCall</code> utilities. Nobody reimplemented a date formatter. Nobody wrote a raw <code>fetch()</code>. Reuse hits were identical between A (no context) and B (minimal map): 3.0 each.</p>
+<p>The minimal CLAUDE.md I planned to push as a Rule Z prerequisite would have had <strong>zero measurable effect</strong> on this benchmark. Agents grep'd the base repo on their own and found what they needed. Modern agents grep faster than they parse docs.</p>
+</div>
+
+<h2>Finding 2 — Rule Z produced real reductions in &ldquo;lazy default&rdquo; patterns</h2>
+<div class="callout win">
+<h3>Render-time allocation patterns collapsed under Rule Z</h3>
+<p>In all 3 A-variant and 3 B-variant runs, agents produced <strong>55–70 inline object allocations per build</strong> (mostly <code>style=&#123;&#123;...&#125;&#125;</code> re-created every render) and <strong>5–7 inline arrow functions in JSX props</strong> (breaks <code>React.memo</code>).</p>
+<p>Under Rule Z, those collapsed to <strong>21 inline objects and &lt;1 arrow function on average</strong>, because the agents proactively hoisted styles to module scope constants and bound event handlers via <code>useCallback</code> instead of inline arrows.</p>
+<p>This is the &ldquo;AI knew but reached for the lazy option anyway&rdquo; failure mode — context engineering can't fix it because there's nothing missing to learn.</p>
+</div>
+
+<h2>Finding 3 — Rule Z induced architectural improvements too</h2>
+<div class="callout">
+<h3>All 3 C runs used React.memo + useMemo + useCallback + stable refs</h3>
+<p>Every C-variant run independently produced:</p>
+<ul style="margin:8px 0 8px 20px">
+  <li>A <code>userId → name</code> <code>Map</code> memoized via <code>useMemo</code> (O(1) per row vs <code>users.find()</code> O(n·m))</li>
+  <li>A <code>Set&lt;string&gt;</code> for selection state (O(1) toggle vs array-includes)</li>
+  <li><code>TaskRow</code> wrapped in <code>React.memo</code> with stable <code>useCallback</code> handlers</li>
+  <li>Module-scope style constants instead of inline <code>style=&#123;&#123;...&#125;&#125;</code></li>
+  <li>Stale-response guards (<code>mountedRef</code> + sequence counters) for async races</li>
+  <li>A separate <code>constants.ts</code> file for magic values</li>
+  <li>A <code>QUALITY_AUDIT.md</code> listing every choice and its rationale</li>
+</ul>
+<p>None of the A or B runs included <strong>any</strong> of these patterns, even though the agents had the same model and nearly identical feature spec.</p>
+</div>
+
+<h2>Where my prediction was wrong</h2>
+<table>
+<tr><th>Prediction</th><th>Result</th><th>Status</th></tr>
+<tr><td>B closes most of the &ldquo;didn't know&rdquo; gap</td><td>There was no gap to close — A already closed it via grep</td><td><span class="pill" style="background:#fef2f2;color:#ef4444">WRONG</span></td></tr>
+<tr><td>B still misses &ldquo;lazy default&rdquo; patterns</td><td>Confirmed — B was actually slightly <em>worse</em> than A on render allocations</td><td><span class="pill c">RIGHT</span></td></tr>
+<tr><td>C closes the remainder, delta B→C smaller than A→B</td><td>Delta C−B (−65% anti-patterns) was <em>larger</em> than A→B (+14% anti-patterns)</td><td><span class="pill" style="background:#fef2f2;color:#ef4444">WRONG</span></td></tr>
+</table>
+<p>The honest revision: context engineering and Rule Z target <strong>non-overlapping</strong> failure modes. Context helps when the AI doesn't know something exists. Rule Z helps when the AI knows but picks the lazy option. In this benchmark, the former didn't matter because agents grep'd on their own — the entire measurable improvement came from the latter.</p>
+
+<h2>Limitations</h2>
+<ul style="margin:8px 0 8px 20px">
+  <li><strong>setState_in_loop false positive.</strong> My heuristic caught functional <code>setState</code> inside <code>.map()</code> in optimistic bulk-update code. That's actually the <em>correct</em> pattern — the measurement script over-flags it. C variants had more of these because they wrote more sophisticated optimistic-update logic. Fixing this would narrow the noise further.</li>
+  <li><strong>Single-session scope.</strong> This is one feature, one codebase, one day. Bigger apps with deeper utility surfaces could change the context picture — a CLAUDE.md might actually help when agents would otherwise miss something in a 500-file repo.</li>
+  <li><strong>Same base model.</strong> All 9 runs used the same Claude version. Different models (Sonnet vs Opus, different vendors) may show different ratios.</li>
+  <li><strong>No runtime benchmark.</strong> The measurements are structural, not performance. Actually running the 3 versions and measuring FPS, memory, render count under load would be the next step.</li>
+</ul>
+
+<h2>Conclusion</h2>
+<div class="tldr">
+<p>The revised synthesis that came out of this:</p>
+<p><strong>Minimal structural context (Vesa's 2-line map) had zero measurable effect in this benchmark</strong> — agents grep'd on their own. I'd still ship it for bigger repos where grep surface area explodes, but it's not load-bearing for small-to-medium projects.</p>
+<p><strong>Rule Z produced a clear 60% reduction in render-allocation anti-patterns</strong> — the category context can't address because the information isn't missing, the discipline is.</p>
+<p><strong>Combined story</strong>: minimal context + hard quality walls + free exploration between. The quality walls are doing the heavy lifting, not the context layer. That's the opposite of what I'd assumed going in.</p>
+</div>
+
+<p style="color:var(--muted);font-size:13px;margin-top:40px;text-align:center">
+Benchmark run 2026-04-14 · 9 parallel agent builds, same feature spec, same base repo, isolated contexts · <a href="https://github.com/baard-ovrebo/claude-agent-team" style="color:var(--indigo)">claude-agent-team</a>
+</p>
+
+</body>
+</html>

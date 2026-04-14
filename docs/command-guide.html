@@ -153,8 +153,22 @@ JIRA_API_TOKEN=your-api-token</pre>
 <h2 class="section" id="rule-z" style="color:var(--red);">Rule Z &mdash; Code Quality Enforcement</h2>
 
 <div class="cmd-card" style="border-left-color:var(--red);">
-<h3>Five Layers of Enforcement</h3>
+<h3>Five Layers of Enforcement — v3</h3>
 <p class="desc">AI-generated code has a documented tendency to produce <em>"works but wasteful"</em> implementations. Rule Z is the enforcement system that prevents this across ALL code-writing commands (<code>/create</code>, <code>/bug</code>, <code>/jira</code>, <code>/new-feature</code>, <code>/create-project</code>, <code>/fix-all</code>, <code>/dev-team</code>, <code>/full-pipeline</code>, <code>/impact-scan --apply</code>, <code>/code-analysis</code>, <code>/unit-test</code>).</p>
+
+<div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:12px 16px;border-radius:8px;margin:10px 0;font-size:13px">
+<strong style="color:#16a34a">Measured result (12-build benchmark, 4 variants &times; 3 runs each):</strong>
+<table style="margin-top:8px;font-size:12px">
+<thead><tr><th>Metric</th><th style="text-align:right">No Rule Z</th><th style="text-align:right">v1</th><th style="text-align:right">v2</th><th style="text-align:right">v3</th></tr></thead>
+<tbody>
+<tr><td>Anti-patterns per build</td><td style="text-align:right;font-family:monospace">60.67</td><td style="text-align:right;font-family:monospace">21.67</td><td style="text-align:right;font-family:monospace;color:#16a34a">0.00</td><td style="text-align:right;font-family:monospace;color:#16a34a">1.33</td></tr>
+<tr><td>DOM nodes after mount</td><td style="text-align:right;font-family:monospace">851</td><td style="text-align:right;font-family:monospace">697</td><td style="text-align:right;font-family:monospace;color:#16a34a">633</td><td style="text-align:right;font-family:monospace;color:#16a34a">630</td></tr>
+<tr><td>Mount time (ms)</td><td style="text-align:right;font-family:monospace">843</td><td style="text-align:right;font-family:monospace">852</td><td style="text-align:right;font-family:monospace">856</td><td style="text-align:right;font-family:monospace">852</td></tr>
+<tr><td><strong>Reduction vs baseline</strong></td><td style="text-align:right">—</td><td style="text-align:right">&minus;64%</td><td style="text-align:right;color:#16a34a">&minus;100%</td><td style="text-align:right;color:#16a34a">&minus;98%</td></tr>
+</tbody>
+</table>
+<div style="margin-top:8px">&rarr; Full comparison: <a href="rule-z-benchmark-results.html" style="color:#16a34a">rule-z-benchmark-results.html</a></div>
+</div>
 
 <table>
 <thead><tr><th>Layer</th><th>What</th><th>Location</th></tr></thead>
@@ -167,9 +181,10 @@ JIRA_API_TOKEN=your-api-token</pre>
 </tbody></table>
 
 <details><summary>Runtime Hooks (layer 4 + 5 teeth)</summary><div>
-<p>Three Python hooks wire the enforcement into Claude Code at runtime:</p>
+<p>Four Python hooks wire the enforcement into Claude Code at runtime:</p>
 <ul>
 <li><code>hooks/quality-audit-check.py</code> (SubagentStop) &mdash; blocks sub-agent completion if <code>## Quality Audit</code> is missing from the report</li>
+<li><code>hooks/quality-audit-verify.py</code> + <code>hooks/ast-verify.mjs</code> (SubagentStop) &mdash; <strong>v3 upgrade</strong> &mdash; parses the YAML audit block and cross-checks claims against the code via TypeScript's AST (falls back to improved regex). Fabricated claims fail and block.</li>
 <li><code>hooks/quality-reminder.py</code> (UserPromptSubmit) &mdash; prepends Rule Z reminder to every user prompt so it stays in short-term context</li>
 <li><code>hooks/quality-gate-check.py</code> (SubagentStop) &mdash; calls the Quality Gate service and blocks on FAIL verdict</li>
 </ul>

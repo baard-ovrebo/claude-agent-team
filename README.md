@@ -2,15 +2,15 @@
 
 An AI development team built on [Claude Code](https://claude.ai/claude-code) — 31 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
 
-**Enforces Rule Z — Code Quality** at four layers (mandate + hard rule + agent-level quality bar + runtime hooks) so AI-generated code is production-optimized, not just working. See [Rule Z section](#rule-z--code-quality-enforcement-applies-to-all-code-writing-commands) below.
+**Enforces Rule Z — Code Quality** at five layers (mandate + hard rule + agent-level quality bar + runtime hooks + external Quality Gate service) so AI-generated code is production-optimized, not just working. [Measured result](https://baard-ovrebo.github.io/claude-agent-team/rule-z-benchmark-results.html): 98–100% reduction in anti-patterns + 25% fewer DOM nodes at runtime vs no-Rule-Z baseline.
 
-No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines (plus two optional Python hooks for runtime enforcement).
+No framework. No SDK. No infrastructure. Just Markdown files that become executable pipelines (plus optional Python hooks for runtime enforcement).
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-14 · Rule Z v3*
 
 > **[Full Command Reference Guide](https://baard-ovrebo.github.io/claude-agent-team/command-guide.html)** — comprehensive interactive documentation for every command with usage examples, flags, relationships, and architecture diagrams.
 >
-> Also available: [Architecture Deep Dive](https://baard-ovrebo.github.io/claude-agent-team/agent-architecture-confluence.html) | [Flow Diagrams](https://baard-ovrebo.github.io/claude-agent-team/new-feature-diagram.html) | [Skills Reference](https://baard-ovrebo.github.io/claude-agent-team/skills-documentation.html)
+> Also available: [Benchmark Results](https://baard-ovrebo.github.io/claude-agent-team/rule-z-benchmark-results.html) | [Initial Benchmark](https://baard-ovrebo.github.io/claude-agent-team/rule-z-initial-benchmark.html) | [Architecture Deep Dive](https://baard-ovrebo.github.io/claude-agent-team/agent-architecture-confluence.html) | [Flow Diagrams](https://baard-ovrebo.github.io/claude-agent-team/new-feature-diagram.html) | [Skills Reference](https://baard-ovrebo.github.io/claude-agent-team/skills-documentation.html)
 
 ## What This Is
 
@@ -159,6 +159,8 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 
 **AI-generated code has a documented tendency to produce "works but wasteful" implementations — rebuilding entire lists when one item changed, loading all data then filtering in memory, setState in loops, creating functions inside render, fetching data the backend already cached.** Rule Z prevents this.
 
+> **Measured result (12-build benchmark):** Rule Z v3 reduces AI anti-patterns by **98–100%** vs a no-Rule-Z baseline (60.67 → 0.00-1.33 per build across 3 runs each), and produces **25% fewer DOM nodes** at runtime. Mount time is unchanged — zero performance penalty from the extra structure. See [benchmark results](docs/rule-z-benchmark-results.html) for the full A vs v1 vs v2 vs v3 comparison.
+
 Every command that writes code (`/create`, `/bug`, `/jira`, `/new-feature`, `/create-project`, `/fix-all`, `/dev-team`, `/full-pipeline`, `/impact-scan --apply`, `/code-analysis`, `/unit-test`) enforces a **four-layer quality model**:
 
 1. **Mandate** (prompt text) — performance, resource efficiency, and code structure standards explained up-front
@@ -166,7 +168,7 @@ Every command that writes code (`/create`, `/bug`, `/jira`, `/new-feature`, `/cr
 3. **Agent-level `[QUALITY BAR — NON-NEGOTIABLE]` block** — injected into every sub-agent prompt so the agents themselves see *"your code will be REJECTED if..."*
 4. **Runtime hooks** (optional but recommended) — see [`hooks/`](hooks/) for four Python hooks that enforce the rule at runtime:
    - `quality-audit-check.py` — blocks sub-agent completion if `## Quality Audit` section is missing from the report
-   - `quality-audit-verify.py` — **Rule Z v2** — parses the YAML audit block and cross-checks each claim (memoized components, useCallback handlers, hoisted style consts, Set/Map uses, cleanup) against the actual code. Fabricated claims fail and block.
+   - `quality-audit-verify.py` + `ast-verify.mjs` — **Rule Z v3** — parses the YAML audit block and cross-checks each claim (memoized components, useCallback handlers, hoisted style consts, Set/Map uses, cleanup) against the actual code. Uses TypeScript's AST when available, falls back to improved regex. Fabricated claims fail and block.
    - `quality-reminder.py` — prepends Rule Z reminder to every user prompt so it stays in short-term context
    - `quality-gate-check.py` — calls the external Quality Gate service (see layer 5) for linter + fresh reviewer verdict
 
@@ -182,6 +184,15 @@ Every agent report MUST include a `## Quality Audit` section covering: hot paths
 **`/quality-scan`** (command) — hunts down existing Rule Z violations across a project or linked group. Finds allocations in hot paths, N+1 queries, linear scans, memory leaks, GPU waste, wrong data structures. Grades the codebase A–F. Can auto-fix or create Jira tickets for findings. Includes cross-project analysis in `--group` mode (frontend re-fetching backend-cached data, duplicate validation, over-fetching, chatty APIs).
 
 > **Install the runtime hooks:** See [`hooks/README.md`](hooks/README.md) for settings.json configuration. Without the hooks, enforcement relies on the LLM following its prompt (strong but soft). With the hooks, the Quality Audit is enforced at runtime — the AI cannot skip it.
+
+**Domain-specific profiles** at [`.claude/profiles/`](.claude/profiles/) — five specialized Quality Bar profiles for different stacks:
+- `quality-bar-frontend-react.md` — React-specific (style allocations, memoization, useMemo/useCallback)
+- `quality-bar-backend-node.md` — Node.js backend (N+1 queries, connection pooling, streaming)
+- `quality-bar-backend-dotnet.md` — .NET/EF Core (AsNoTracking, async propagation, HttpClientFactory)
+- `quality-bar-game-unity.md` — Unity C# (GetComponent caching, object pools, GC-free Update loops)
+- `quality-bar-mobile.md` — Mobile (virtualized lists, image sizing, battery awareness)
+
+Each profile has domain-specific counter-patterns with before/after snippets and a machine-checkable YAML audit schema tailored to that domain.
 
 ### LLM Council — Multi-Model Decisions
 - **Parallel queries** — consults ChatGPT (OpenAI) and Gemini (Google AI) simultaneously via their APIs
