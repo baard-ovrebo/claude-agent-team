@@ -30,6 +30,7 @@ except ImportError:
 from linters import run_linter, detect_language
 from reviewer import run_fresh_reviewer
 from queue_store import QueueStore
+from project_analyzer import get_index, check_reuse, check_conventions
 
 # --------------------------------------------------------------------------- #
 # Config
@@ -83,6 +84,8 @@ class Verdict(BaseModel):
     findings: list[Finding]
     linter_ran: bool
     reviewer_ran: bool
+    project_indexed: bool = False
+    project_indexed_files: int = 0
     human_review_url: str | None = None
     duration_ms: int
 
@@ -122,14 +125,16 @@ async def gate_check(req: CheckRequest) -> Verdict:
             duration_ms=0,
         )
 
-    # Run linter and reviewer in parallel — both are independent
+    # Run linter, reviewer, and project analysis in parallel — all independent
     linter_task = asyncio.create_task(_run_linter_stage(req))
     reviewer_task = asyncio.create_task(_run_reviewer_stage(req))
+    project_task = asyncio.create_task(_run_project_analysis_stage(req))
 
     linter_findings, linter_ran = await linter_task
     reviewer_findings, reviewer_ran = await reviewer_task
+    reuse_findings, convention_findings, project_indexed = await project_task
 
-    all_findings: list[Finding] = [*linter_findings, *reviewer_findings]
+    all_findings: list[Finding] = [*linter_findings, *reviewer_findings, *reuse_findings, *convention_findings]
 
     # Determine verdict
     critical_count = sum(1 for f in all_findings if f.severity == "critical")
@@ -200,6 +205,8 @@ async def gate_check(req: CheckRequest) -> Verdict:
         findings=all_findings,
         linter_ran=linter_ran,
         reviewer_ran=reviewer_ran,
+        project_indexed=project_indexed > 0,
+        project_indexed_files=project_indexed,
         human_review_url=human_review_url,
         duration_ms=duration_ms,
     )
@@ -378,6 +385,60 @@ async def _run_reviewer_stage(req: CheckRequest) -> tuple[list[Finding], bool]:
         for item in raw
     ]
     return findings, True
+
+
+# --------------------------------------------------------------------------- #
+# Project analysis stage — reuse + convention checks against the existing repo
+# --------------------------------------------------------------------------- #
+async def _run_project_analysis_stage(
+    req: CheckRequest,
+) -> tuple[list[Finding], list[Finding], int]:
+    """Index the project at req.project_root and check for:
+      - Reuse violations: new code duplicating existing exports
+      - Convention violations: new code breaking the project's style
+
+    Returns (reuse_findings, convention_findings, indexed_files_count).
+    Both lists are empty when the project root doesn't exist or can't be scanned.
+    """
+    if not req.project_root:
+        return [], [], 0
+
+    try:
+        index = await asyncio.wait_for(
+            asyncio.to_thread(get_index, req.project_root),
+            timeout=20,
+        )
+    except (asyncio.TimeoutError, Exception):
+        return [], [], 0
+
+    new_files = [f.model_dump() for f in req.changed_files]
+
+    reuse_raw = check_reuse(new_files, index)
+    convention_raw = check_conventions(new_files, index)
+
+    reuse_findings = [
+        Finding(
+            source="reuse",
+            severity=item.get("severity", "minor"),
+            file=item.get("file"),
+            line=item.get("line"),
+            rule=item.get("rule"),
+            message=item.get("message", ""),
+        )
+        for item in reuse_raw
+    ]
+    convention_findings = [
+        Finding(
+            source="convention",
+            severity=item.get("severity", "minor"),
+            file=item.get("file"),
+            line=item.get("line"),
+            rule=item.get("rule"),
+            message=item.get("message", ""),
+        )
+        for item in convention_raw
+    ]
+    return reuse_findings, convention_findings, index.indexed_files
 
 
 # --------------------------------------------------------------------------- #

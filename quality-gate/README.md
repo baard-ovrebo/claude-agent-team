@@ -1,10 +1,13 @@
 # Quality Gate Service
 
-A local HTTP service that validates AI-generated code using **three independent checks** before allowing a sub-agent to complete:
+A local HTTP service that validates AI-generated code using **four independent checks** before allowing a sub-agent to complete:
 
 1. **Linter pass** — language-specific (ESLint, ruff/pylint, go vet, cargo clippy, dotnet format, rubocop, phpstan)
-2. **Fresh Claude reviewer** — independent Claude instance that reviews the diff with NO knowledge of the original agent's reasoning (prevents anchoring bias)
-3. **Optional human review queue** — web UI for flagging items that need a human eye
+2. **Project analysis** — scans the existing codebase, builds an index of all exported functions/components/types, detects style conventions, then flags new code that:
+   - **Duplicates existing functionality** (e.g., agent writes `formatDate` when `@/utils/dates.ts` already exports it)
+   - **Breaks the project's style conventions** (indent, quotes, file naming)
+3. **Fresh Claude reviewer** — independent Claude instance that reviews the diff with NO knowledge of the original agent's reasoning (prevents anchoring bias)
+4. **Optional human review queue** — web UI for flagging items that need a human eye
 
 Returns `PASS`, `FAIL` (with findings), or `HUMAN_REVIEW_REQUIRED`. The `quality-gate-check.py` hook uses the verdict to allow or block sub-agent completion.
 
