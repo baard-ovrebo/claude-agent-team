@@ -1,8 +1,77 @@
 {
   "version": "1.0",
-  "commandCount": 31,
-  "lastUpdated": "2026-04-14",
+  "commandCount": 32,
+  "lastUpdated": "2026-06-10",
   "commands": [
+    {
+      "name": "/prompt",
+      "category": "Universal",
+      "categoryColor": "#10b981",
+      "description": "Rules-governed prompt — runs any task through a project rules file that forces the AI to search for and reuse existing components/classes/utils (or promote a local one to shared and migrate all usages) before creating anything new",
+      "usage": "/prompt \"task\" | /prompt --add-rule \"text\" [--project <name>] [--global] | /prompt --list-rules",
+      "arguments": [
+        {
+          "name": "task_or_flag",
+          "type": "string",
+          "required": true,
+          "description": "A task to perform under the rules, or a manage-rules flag (--add-rule / --list-rules)",
+          "examples": [
+            "Create a table showing data from a SAF-T file",
+            "--add-rule \"Always reuse existing API clients\"",
+            "--list-rules"
+          ]
+        }
+      ],
+      "flags": [
+        {
+          "flag": "--add-rule",
+          "type": "string",
+          "description": "Append a new rule (deduplicated) to the rules file",
+          "example": "/prompt --add-rule \"Never log secrets\""
+        },
+        {
+          "flag": "--project",
+          "type": "string",
+          "description": "Scope an added rule to a single project via a [project: <name>] section",
+          "example": "/prompt --add-rule \"Shared components live in src/app/shared\" --project control-frontend"
+        },
+        {
+          "flag": "--global",
+          "type": "boolean",
+          "description": "Target the global rules file (~/.claude/prompt-rules.env) instead of the project file",
+          "example": "/prompt --add-rule \"Reuse before creating\" --global"
+        },
+        {
+          "flag": "--list-rules",
+          "type": "boolean",
+          "description": "Print the rules currently in effect and which file they came from",
+          "example": "/prompt --list-rules"
+        }
+      ],
+      "modes": [
+        {
+          "name": "task",
+          "trigger": "/prompt \"description\"",
+          "description": "Run a task under all applicable rules: load rules -> plan -> reuse-scan -> execute -> compliance checklist"
+        },
+        {
+          "name": "add-rule",
+          "trigger": "/prompt --add-rule \"text\"",
+          "description": "Append a rule to the project or global rules file (optionally scoped with --project)"
+        },
+        {
+          "name": "list-rules",
+          "trigger": "/prompt --list-rules",
+          "description": "Show the active rules resolved for the current project"
+        }
+      ],
+      "output": [],
+      "uses": [],
+      "usedBy": [],
+      "requires": [
+        ".claude/prompt-rules.env and/or ~/.claude/prompt-rules.env (copy from .claude/prompt-rules.example.env)"
+      ]
+    },
     {
       "name": "/jira",
       "category": "Project Management",

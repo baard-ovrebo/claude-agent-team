@@ -1,4 +1,7 @@
 .env
+# Live /prompt rules (personal/project-specific) — keep the .example template tracked
+.claude/prompt-rules.env
+prompt-rules.env
 reports/*.html
 reports/*.md
 reports/screenshots/

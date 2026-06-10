@@ -1,6 +1,6 @@
 # Claude Agent Team
 
-An AI development team built on [Claude Code](https://claude.ai/claude-code) — 31 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, containerize, and deploy.
+An AI development team built on [Claude Code](https://claude.ai/claude-code) — 32 slash commands that orchestrate specialized AI agents to manage Jira tickets, design UIs, implement features, fix bugs, verify with Playwright, review code, run tests, audit dependencies, sync branches, onboard repositories, generate changelogs, enforce code reuse via a project rules file, containerize, and deploy.
 
 **Enforces Rule Z — Code Quality** at five layers (mandate + hard rule + agent-level quality bar + runtime hooks + external Quality Gate service) so AI-generated code is production-optimized, not just working. [Measured result](https://baard-ovrebo.github.io/claude-agent-team/rule-z-benchmark-results.html): 98–100% reduction in anti-patterns + 25% fewer DOM nodes at runtime vs no-Rule-Z baseline.
 
@@ -48,6 +48,8 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 ### Universal (work in any project)
 | Command | Description |
 |---------|-------------|
+| `/prompt "task"` | **Rules-governed prompt** — runs any task through a project's rules file (`.claude/prompt-rules.env` + global `~/.claude/prompt-rules.env`). Forces the AI to search for and reuse existing components/classes/utils (or promote a local one to shared and migrate all usages) before creating anything new |
+| `/prompt --add-rule "text"` | Append a rule from the CLI. Add `--project <name>` to scope it to one project, `--global` to write the global file. `/prompt --list-rules` shows what's active |
 | `/create "description"` | Context-aware feature creator: detects project type, designs in Paper, generates HTML plan, gets approval, implements, verifies with Playwright. Supports `--council` for multi-model consultation |
 | `/bug "description"` | Context-aware bug fixer: analyzes screenshots, diagnoses root cause, fixes, verifies with Playwright |
 | `/changelog` | Reads reports from `/create` and `/bug`, generates project-themed HTML changelog (adapts to GAME/APPLICATION/SAAS/API/MOBILE), moves to processed |
@@ -139,6 +141,13 @@ A collection of **custom Claude Code commands** (Markdown files in `.claude/comm
 - **Self-contained HTML reports** — all screenshots embedded as base64, clickable lightbox for full-size viewing
 - **Changelog pipeline** — `/create` and `/bug` save timestamped reports → `/changelog` compiles them into a project-themed HTML changelog
 - **Project design profile** — all HTML reports adapt their visual design to match the project. Design settings stored in `.claude/project-profile.json`. Auto-generated per ProjectType: dark neon for games, clean corporate for apps, terminal-style for APIs
+
+### Rules-Governed Prompt — /prompt
+- **Reuse enforced, not hoped for** — before writing any code, `/prompt` forces the AI to search the project for an existing component/class/function/util and follow a strict order: **use a shared version if it exists → else promote a local/duplicate to shared and update every usage → else create new (as shared)**. The goal is one implementation, one style, used everywhere — no duplication.
+- **Rules live in a plain file** — `.claude/prompt-rules.env` (project) and `~/.claude/prompt-rules.env` (global), combined at runtime. One rule per line; edit in plain English with no code changes. Copy [`/.claude/prompt-rules.example.env`](.claude/prompt-rules.example.env) to get started.
+- **Per-project tags** — `[project: <name>]` sections scope rules to a single project (matched by git-repo/folder name), so one global file can carry pointer rules for many projects. Pointer rules (e.g. *"shared components live in `src/app/shared` — check there first"*) are what make reuse reliable in large codebases.
+- **Manage from the CLI** — `/prompt --add-rule "..."` (deduplicated, with optional `--project`/`--global`) and `/prompt --list-rules`.
+- **Transparent & auditable** — prints which rules it loaded, reports its reuse scan, and ends with a per-rule ✅/⚠️/❌ compliance checklist.
 
 ### Repository Onboarding
 - **Single repo mode** — detects stack, installs deps, configures env, sets up DB, runs migrations, builds, tests, starts dev server
@@ -264,6 +273,7 @@ Each profile has domain-specific counter-patterns with before/after snippets and
 | `/create`, `/new-feature` (design phase) | Paper MCP server (optional — skips design if unavailable) |
 | `/verify` | Playwright + running application + `.claude/project-profile.json` (built on first run) |
 | `/council` | `.claude/council.env` with OpenAI + Google AI API keys (run `/council --config` to set up) |
+| `/prompt` | A rules file: `.claude/prompt-rules.env` and/or `~/.claude/prompt-rules.env` (copy from `.claude/prompt-rules.example.env`) |
 | `/unit-test`, `/deps`, `/dev-team` | Nothing extra — works standalone |
 | `/create`, `/bug`, `/changelog` | Nothing extra — works standalone (ProjectType in .env is optional) |
 | `/git sync` | Git installed (works standalone) |
@@ -318,7 +328,9 @@ Every agent prints status lines before each major step:
 
 ```
 .claude/
+  prompt-rules.example.env # Template for /prompt rules (copy to prompt-rules.env)
   commands/
+    prompt.md            # Rules-governed prompt (forces reuse before creating)
     jira.md              # Jira ticket orchestrator (the biggest pipeline)
     new-feature.md       # Feature development pipeline
     create.md            # Universal feature creator (role-adaptive)
