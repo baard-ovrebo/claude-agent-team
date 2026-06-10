@@ -84,9 +84,100 @@ The project-local file's rules are inherently for this project; apply all of the
 (skipped M rule(s) tagged for other projects)
 ```
 
+## Step 1.5 — Map the project's design system (do this BEFORE planning if the task involves UI)
+
+If the task involves building, modifying, or styling any UI (component, page, widget, template, style sheet), you MUST first build a snapshot of the project's actual design system. This is what makes "match the project's style" actually reliable — without it, "use the project's colors" degrades to best-effort guessing.
+
+Skip this step ONLY if the task is purely non-visual (data migrations, pure logic, backend wiring with no UI surface).
+
+### 1.5a — Auto-extract design tokens (synthesize the project's `_variables.scss`)
+
+Walk the project's SCSS / SASS / CSS / Less files (skip `node_modules`, `dist`, `build`, `.git`, `.angular`) and extract:
+
+| Token type | Regex |
+|---|---|
+| SCSS variable definitions | `\$([a-zA-Z][\w-]*)\s*:\s*([^;{}\n]+?)\s*(?:!default\s*)?;` |
+| CSS custom properties | `--([a-zA-Z][\w-]*)\s*:\s*([^;{}\n]+?)\s*;` |
+| Hex color usage frequency | `#([0-9a-f]{3}|[0-9a-f]{6})\b` |
+| `font-family` declarations | `font-family\s*:\s*([^;{}\n]+?);` |
+| `border-radius` declarations | `border-radius\s*:\s*([^;{}\n]+?);` |
+
+Then **resolve one level of variable indirection**: if `$tableHeaderBg: $primaryBlue;` and `$primaryBlue: #312E6B;`, record `$tableHeaderBg = #312E6B (originally $primaryBlue)`.
+
+Report what you found:
+
+```
+[Prompt] Design tokens extracted from {project_name}:
+  - {N} SCSS variables (top color vars: $primaryBlue=#312E6B, $lighterBlue=#086A91, ...)
+  - {M} CSS custom properties
+  - Top palette: #312E6B (47×), #F3F3F7 (23×), #FFFFFF (89×), ...
+  - Font: {literal font-family declaration}
+  - Border-radius scale: 4px (38×), 12px (4×)
+```
+
+When you write inline styles or CSS, use the **resolved literal values** (e.g. `background:#312E6B`), NEVER the variable name (`$primaryBlue` does NOT work in inline CSS / preview HTML).
+
+### 1.5b — Scan for existing UI patterns (build the project's pattern catalog)
+
+Walk every `.html` (Angular) / `.tsx`/`.jsx` (React) / `.vue` (Vue) / `.svelte` file in the project. Use regex to detect existing UI patterns and pair each match with its companion stylesheet (Angular convention: `foo.component.html` + `foo.component.scss`; React: same file).
+
+Patterns to catalog (detect-regex / max-snippet-size):
+
+| Type | Detect regex | Snippet |
+|---|---|---|
+| Tables | `<table\b\|<mat-table\b\|<p-table\b\|<cdk-table\b` | 1800 chars |
+| Lists | `<ul\b[^>]*class=\|<mat-list\b\|<p-listbox\b\|<li\b[^>]*\*ngFor` | 1200 chars |
+| Cards | `<mat-card\b\|<p-card\b\|class="[^"]*\bcard\b` | 1200 chars |
+| Modals / dialogs | `<mat-dialog\b\|<p-dialog\b\|class="[^"]*\b(modal\|dialog)\b` | 1500 chars |
+| Forms | `<form\b\|<mat-form-field\b\|formControlName=` | 1200 chars |
+| Badges / chips / pills | `<mat-chip\b\|<p-chip\b\|<p-tag\b\|class="[^"]*\b(badge\|chip\|pill\|tag\|status-?\w*)\b` | 700 chars |
+| Styled buttons | `<button\b[^>]*class="[^"]*\b(primary\|secondary\|outlined\|raised\|fab\|btn-[\w-]+)\b\|<mat-button\b\|<p-button\b` | 500 chars |
+
+For each pattern type, keep the top 2 examples ranked by richness (snippet length + paired-SCSS length).
+
+Report what you found:
+
+```
+[Prompt] UI patterns catalogued:
+  - Tables: {N} found (top: src/app/modules/.../some-list.component.html)
+  - Lists: {M} found
+  - Cards: ...
+  - Modals: ...
+  - Forms: ...
+  - Badges: ...
+  - Buttons: ...
+```
+
+### 1.5c — When you build, MIRROR the catalog
+
+When the task asks for one of these component types, you MUST first reference the catalog and MIRROR the closest existing example:
+
+- Same tag structure (e.g. if existing tables use `<table>` with `<thead>` + `<tbody>` and not `<mat-table>`, do the same)
+- Same class names where shared
+- Same row / cell shape
+- Same badge / pill shape
+- Same paired-SCSS color references (using the resolved literal hex values from 1.5a)
+
+If the catalog has zero examples of the requested type (e.g. user asks for a "calendar" and you find none) → say so explicitly and create new, building it in the project's shared location. Reference 1.5a for colors/fonts/spacing.
+
+### 1.5d — Skip rules
+
+You may skip Step 1.5 if:
+- The task is non-visual (data migrations, backend logic, infrastructure)
+- The task is a single-line tweak to an existing file (don't waste a scan for `change padding by 2px`)
+- You've already run Step 1.5 in the same session and the project state hasn't materially changed
+
+Otherwise, Step 1.5 is **mandatory** for any UI work. The cost is a few seconds; the payoff is on-brand output the first time instead of a build–review–rebuild loop.
+
+---
+
 ## Step 2 — Plan against the rules
 
 Before writing any code, restate the task in your own words and write a short plan that **explicitly references each relevant rule**. For every rule that touches the task, state how you will satisfy it.
+
+If Step 1.5 was run, the plan must also reference:
+- Which catalog example(s) you will mirror (cite the file path)
+- Which token values you will use (cite the SCSS variable and its resolved hex)
 
 In particular, for reuse/DRY-type rules you MUST actually search the codebase first:
 - Search for existing classes, components, functions, variables, types, constants, styles, and utilities that already do what the task needs (use Grep/Glob/Explore across the project).
@@ -119,6 +210,29 @@ After finishing:
   ✅ Rule 2 — matched existing style
   ⚠️ Rule 3 — not applicable (no external API touched)
 ```
+
+### Step 4.5 — Auto-invoke Quality Gate for UI work
+
+If Step 1.5 was run (i.e. this was UI work), automatically invoke `/quality-gate` on the changed file(s) before declaring the task done:
+
+```
+/quality-gate <changed-file> --apply
+```
+
+Quality Gate will:
+1. Build the same design context you built in Step 1.5 (token palette + pattern catalog) — both sides agree on what "the project's style" is
+2. Run an independent reviewer with a clean context that has never seen your reasoning
+3. Surface any find/replace pairs as deterministic corrections
+4. Apply only the corrections that survive its validation guards (rejects SCSS variables, rejects equivalent-value swaps, rejects phantom finds)
+5. Hand back any structural findings that can't be expressed as find/replace — those come back to YOU as a new `/prompt` cycle
+
+Report Quality Gate's result in the compliance checklist:
+
+```
+[Prompt] Quality Gate: PASS | REPLACED ({N} fixes applied) | INFORMATIONAL ({M} notes)
+```
+
+If Quality Gate returns `REPLACED`, the task is still complete — the gate just trimmed your output to match the project. If it returns structural findings, address them in a follow-up `/prompt` cycle and re-run Quality Gate until clean.
 
 ---
 
