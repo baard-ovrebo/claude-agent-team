@@ -84,100 +84,95 @@ The project-local file's rules are inherently for this project; apply all of the
 (skipped M rule(s) tagged for other projects)
 ```
 
-## Step 1.5 — Map the project's design system (do this BEFORE planning if the task involves UI)
+## Step 1.5 — Load the project's design manifest (do this BEFORE planning if the task involves UI)
 
-If the task involves building, modifying, or styling any UI (component, page, widget, template, style sheet), you MUST first build a snapshot of the project's actual design system. This is what makes "match the project's style" actually reliable — without it, "use the project's colors" degrades to best-effort guessing.
+If the task involves building, modifying, or styling any UI (component, page, widget, template, style sheet), you MUST consult the project's design manifest. This is what makes "match the project's style" actually reliable.
 
 Skip this step ONLY if the task is purely non-visual (data migrations, pure logic, backend wiring with no UI surface).
 
-### 1.5a — Auto-extract design tokens (synthesize the project's `_variables.scss`)
+### 1.5a — Prefer the persistent manifest
 
-Walk the project's SCSS / SASS / CSS / Less files (skip `node_modules`, `dist`, `build`, `.git`, `.angular`) and extract:
+First check for `.claude/project-design.json` in the project root.
 
-| Token type | Regex |
-|---|---|
-| SCSS variable definitions | `\$([a-zA-Z][\w-]*)\s*:\s*([^;{}\n]+?)\s*(?:!default\s*)?;` |
-| CSS custom properties | `--([a-zA-Z][\w-]*)\s*:\s*([^;{}\n]+?)\s*;` |
-| Hex color usage frequency | `#([0-9a-f]{3}|[0-9a-f]{6})\b` |
-| `font-family` declarations | `font-family\s*:\s*([^;{}\n]+?);` |
-| `border-radius` declarations | `border-radius\s*:\s*([^;{}\n]+?);` |
+**If it exists:** READ IT. This is your authoritative source for the project's design language. It's compact (~5 kB), stable across runs, and may include user-corrected `_overrides`. Skip 1.5b/1.5c if a valid manifest exists.
 
-Then **resolve one level of variable indirection**: if `$tableHeaderBg: $primaryBlue;` and `$primaryBlue: #312E6B;`, record `$tableHeaderBg = #312E6B (originally $primaryBlue)`.
-
-Report what you found:
+**If it does NOT exist:** abort with this message and tell the user to generate one first:
 
 ```
-[Prompt] Design tokens extracted from {project_name}:
-  - {N} SCSS variables (top color vars: $primaryBlue=#312E6B, $lighterBlue=#086A91, ...)
-  - {M} CSS custom properties
-  - Top palette: #312E6B (47×), #F3F3F7 (23×), #FFFFFF (89×), ...
-  - Font: {literal font-family declaration}
-  - Border-radius scale: 4px (38×), 12px (4×)
+[Prompt] No design manifest found at .claude/project-design.json.
+
+The project's design language has not been mapped yet. Run this once, then
+re-run your task:
+
+  /init-design-system
+
+This will scan the project, extract its tokens, catalog its UI patterns,
+build a reuse registry, and write the manifest. It's a one-time setup
+(re-run with --refresh if the design language changes later).
+
+Without the manifest, /prompt would have to re-derive your design language
+from raw SCSS on every call — slower, more expensive, less consistent.
 ```
 
-When you write inline styles or CSS, use the **resolved literal values** (e.g. `background:#312E6B`), NEVER the variable name (`$primaryBlue` does NOT work in inline CSS / preview HTML).
+Do NOT proceed without the manifest. Tell the user to run `/init-design-system`, then stop.
 
-### 1.5b — Scan for existing UI patterns (build the project's pattern catalog)
+### 1.5b — How to use the manifest in your build
 
-Walk every `.html` (Angular) / `.tsx`/`.jsx` (React) / `.vue` (Vue) / `.svelte` file in the project. Use regex to detect existing UI patterns and pair each match with its companion stylesheet (Angular convention: `foo.component.html` + `foo.component.scss`; React: same file).
+When you write code, lean on these manifest sections:
 
-Patterns to catalog (detect-regex / max-snippet-size):
+- **`colors.{role}.hex`** — use the literal hex value for each role (e.g. `colors.primary.hex` for headers). NEVER use the SCSS variable name in inline CSS or HTML preview snippets.
+- **`typography.primary.family`** — the font-family string (use literally).
+- **`spacing.*`** — radius, padding, gap values.
+- **`components.{type}`** — for each component type, the canonical example path + role mappings. When the user asks for a table, mirror `components.table.html_snippet` structure and apply the role-mapped colors.
+- **`reuse_registry`** — every entry with `available: true` is something you CAN import. CHECK THIS LIST before creating anything new. If a registry entry exists for what the user asked for, import it instead of building.
+- **`conventions`** — language, currency format, date format. Use these literally.
 
-| Type | Detect regex | Snippet |
-|---|---|---|
-| Tables | `<table\b\|<mat-table\b\|<p-table\b\|<cdk-table\b` | 1800 chars |
-| Lists | `<ul\b[^>]*class=\|<mat-list\b\|<p-listbox\b\|<li\b[^>]*\*ngFor` | 1200 chars |
-| Cards | `<mat-card\b\|<p-card\b\|class="[^"]*\bcard\b` | 1200 chars |
-| Modals / dialogs | `<mat-dialog\b\|<p-dialog\b\|class="[^"]*\b(modal\|dialog)\b` | 1500 chars |
-| Forms | `<form\b\|<mat-form-field\b\|formControlName=` | 1200 chars |
-| Badges / chips / pills | `<mat-chip\b\|<p-chip\b\|<p-tag\b\|class="[^"]*\b(badge\|chip\|pill\|tag\|status-?\w*)\b` | 700 chars |
-| Styled buttons | `<button\b[^>]*class="[^"]*\b(primary\|secondary\|outlined\|raised\|fab\|btn-[\w-]+)\b\|<mat-button\b\|<p-button\b` | 500 chars |
+### 1.5b.2 — Screenshot grounding (the strongest style anchor)
 
-For each pattern type, keep the top 2 examples ranked by richness (snippet length + paired-SCSS length).
+Check `.claude/design-screenshots/` for reference screenshots of the real running application (PNG/JPEG, captured by the team or by `/init-design-system --screenshots`). If one exists for the relevant screen/component type:
 
-Report what you found:
+- **Read it** (you can read images) and treat it as ground truth that OVERRIDES text-derived style. What you see in the screenshot beats what you infer from SCSS.
+- Match its design language precisely: header treatment, table/row styling, badge shapes, fonts, spacing rhythm.
+
+Why: models follow visual examples far more faithfully than style descriptions. A screenshot of the real app is worth more than 80 kB of SCSS.
+
+### 1.5b.3 — Template mode (copy, don't reinterpret)
+
+When the manifest's `components.{type}` has a canonical example of the SAME component type you're building:
+
+- Treat the canonical's HTML as your **template**. Copy its tag structure, nesting, and styling approach exactly.
+- Change ONLY the data: column names, cell contents, labels.
+- Do not "improve" the layout, reorganize it, or modernize it. An exact structural copy with new data is the goal.
+- Models drift when they reinterpret; they stay on-brand when they copy. **Copy.**
+
+### 1.5c — Cite the manifest in your plan
+
+In Step 2 (Plan), explicitly cite which manifest entries you'll consume:
 
 ```
-[Prompt] UI patterns catalogued:
-  - Tables: {N} found (top: src/app/modules/.../some-list.component.html)
-  - Lists: {M} found
-  - Cards: ...
-  - Modals: ...
-  - Forms: ...
-  - Badges: ...
-  - Buttons: ...
+[Prompt] Manifest references:
+  - Color: colors.primary.hex (#312E6B) for table header background
+  - Color: colors.background.hex (#FFFFFF) for header text
+  - Color: colors.surface_alt.hex (#F3F3F7) for alternate rows
+  - Component: components.table.html_snippet structure (from agreement-template-list.component.html)
+  - Reuse: importing @app/shared/button for action buttons (reuse_registry["Button"])
+  - Conventions: Norwegian labels, "DD.MM.YYYY" dates, "12 000 kr" currency
 ```
-
-### 1.5c — When you build, MIRROR the catalog
-
-When the task asks for one of these component types, you MUST first reference the catalog and MIRROR the closest existing example:
-
-- Same tag structure (e.g. if existing tables use `<table>` with `<thead>` + `<tbody>` and not `<mat-table>`, do the same)
-- Same class names where shared
-- Same row / cell shape
-- Same badge / pill shape
-- Same paired-SCSS color references (using the resolved literal hex values from 1.5a)
-
-If the catalog has zero examples of the requested type (e.g. user asks for a "calendar" and you find none) → say so explicitly and create new, building it in the project's shared location. Reference 1.5a for colors/fonts/spacing.
 
 ### 1.5d — Skip rules
 
 You may skip Step 1.5 if:
 - The task is non-visual (data migrations, backend logic, infrastructure)
-- The task is a single-line tweak to an existing file (don't waste a scan for `change padding by 2px`)
-- You've already run Step 1.5 in the same session and the project state hasn't materially changed
+- The task is a single-line tweak to an existing file
+- You've already cited the manifest in this session and the project state hasn't changed
 
-Otherwise, Step 1.5 is **mandatory** for any UI work. The cost is a few seconds; the payoff is on-brand output the first time instead of a build–review–rebuild loop.
+Otherwise, Step 1.5 is **mandatory** for any UI work. The manifest is small; reading it adds milliseconds. The payoff is on-brand output the first time instead of a build-review-rebuild loop.
 
 ---
 
-## Step 2 — Plan against the rules
+## Step 2 — Plan against the rules + manifest
 
-Before writing any code, restate the task in your own words and write a short plan that **explicitly references each relevant rule**. For every rule that touches the task, state how you will satisfy it.
-
-If Step 1.5 was run, the plan must also reference:
-- Which catalog example(s) you will mirror (cite the file path)
-- Which token values you will use (cite the SCSS variable and its resolved hex)
+Before writing any code, restate the task in your own words and write a short plan that **explicitly references each relevant rule** and, for UI work, **explicitly cites the manifest entries** you'll consume. For every rule that touches the task, state how you will satisfy it.
 
 In particular, for reuse/DRY-type rules you MUST actually search the codebase first:
 - Search for existing classes, components, functions, variables, types, constants, styles, and utilities that already do what the task needs (use Grep/Glob/Explore across the project).
@@ -219,20 +214,55 @@ If Step 1.5 was run (i.e. this was UI work), automatically invoke `/quality-gate
 /quality-gate <changed-file> --apply
 ```
 
-Quality Gate will:
-1. Build the same design context you built in Step 1.5 (token palette + pattern catalog) — both sides agree on what "the project's style" is
-2. Run an independent reviewer with a clean context that has never seen your reasoning
-3. Surface any find/replace pairs as deterministic corrections
-4. Apply only the corrections that survive its validation guards (rejects SCSS variables, rejects equivalent-value swaps, rejects phantom finds)
-5. Hand back any structural findings that can't be expressed as find/replace — those come back to YOU as a new `/prompt` cycle
+Quality Gate reads the SAME `.claude/project-design.json` you read in Step 1.5 — both sides agree on what "the project's style" is. It will then:
+
+1. **Layer A** — Deterministic static checks against the manifest (off-brand colors, wrong fonts)
+2. **Layer B** — Independent LLM reviewer producing strict find/replace pairs
+3. **Layer C** — Claude Vision: screenshots your output + the manifest's canonical example, compares them visually, surfaces any divergence
+4. **AST reuse check** — parses your output and verifies imports against the manifest's `reuse_registry`. If you wrote a `<button>` inline when `@app/shared/button` exists in the registry → hard fail.
+5. **Role-aware color check** — verifies your color usage matches the role-mapping in the manifest (e.g. the primary brand color isn't used for borders).
+6. **Fix application** — deterministic find/replace (no AI rewrite) with rejection guards for SCSS vars, equivalent values, phantom finds.
 
 Report Quality Gate's result in the compliance checklist:
 
 ```
-[Prompt] Quality Gate: PASS | REPLACED ({N} fixes applied) | INFORMATIONAL ({M} notes)
+[Prompt] Quality Gate verdict:
+  Layer A: {clean | N findings}
+  Layer B: {clean | N findings}
+  Layer C (Vision): {clean | N divergences from canonical example}
+  AST reuse:        {clean | N missed imports — would have used X from reuse_registry}
+  Role-aware:       {clean | N semantic color misuses}
+  Fix:              {N replacements applied, M skipped (reasons)}
+  Reuse certificate: {emitted | failed}
+
+  Final: PASS | REPLACED | NEEDS-REWORK
 ```
 
-If Quality Gate returns `REPLACED`, the task is still complete — the gate just trimmed your output to match the project. If it returns structural findings, address them in a follow-up `/prompt` cycle and re-run Quality Gate until clean.
+If Quality Gate returns `REPLACED`, the task is still complete — the gate just trimmed your output to match the project. If it returns `NEEDS-REWORK` (i.e. structural findings that find/replace can't fix, OR missed reuse), address them in a follow-up `/prompt` cycle and re-run Quality Gate until PASS.
+
+### Step 4.6 — Emit a reuse certificate
+
+For every component / function / file you created or modified, emit a **reuse certificate** to `reports/reuse-certificate-{task-id}.json`:
+
+```json
+{
+  "task": "Add a SAF-T table page",
+  "timestamp": "...",
+  "components_created": [
+    {
+      "path": "src/app/modules/saft/saft-page.component.ts",
+      "imports_from_registry": ["@app/shared/table", "@app/shared/button", "@app/utils/dates"],
+      "imports_new": [],
+      "scss_classes_used": ["agreement-table", "status-pill"],
+      "tokens_referenced": ["$primaryBlue", "$lightGrey", "$tableHeaderText"]
+    }
+  ],
+  "registry_entries_unused_but_relevant": [],
+  "reviewer_notes": "..."
+}
+```
+
+If `registry_entries_unused_but_relevant` is non-empty, Quality Gate would have flagged this in step 4.5 — but the certificate serves as the auditable record. Paste a summary of the certificate into the PR description (the user can copy it from the file).
 
 ---
 
